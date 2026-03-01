@@ -39,16 +39,15 @@ namespace zlfft {
             C* __restrict out = out_buffer.data();
             const C* __restrict w_ptr = twiddles_.data();
             for (size_t half = 1; half < n; half <<= 1) {
-                for (size_t j = 0; j < n; j += (half << 1)) {
-                    const C* __restrict group_in_a = in + j;
-                    const C* __restrict group_in_b = in + j + half;
-                    C* __restrict group_out_a = out + (j >> 1);
-                    C* __restrict group_out_b = out + (j >> 1) + (n >> 1);
+                for (size_t j = 0; j < (n >> 1); j += half) {
+                    const C* __restrict group_in_a = &in[j];
+                    const C* __restrict group_in_b = &in[j + (n >> 1)];
+                    C* __restrict group_out_a = &out[2 * j];
+                    C* __restrict group_out_b = &out[2 * j + half];
                     for (size_t k = 0; k < half; ++k) {
-                        const auto w = w_ptr[k];
                         const auto a = group_in_a[k];
                         const auto b = group_in_b[k];
-                        const auto v = w * b;
+                        const auto v = w_ptr[k] * b;
 
                         group_out_a[k] = a + v;
                         group_out_b[k] = a - v;

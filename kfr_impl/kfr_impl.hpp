@@ -1,0 +1,26 @@
+#pragma once
+
+#include <kfr/dft.hpp>
+#include <span>
+#include <cassert>
+
+namespace zlbenchmark {
+    template <typename F>
+    class KFRFFT final {
+        using C = std::complex<F>;
+
+    public:
+        explicit KFRFFT(const size_t order) :
+            fft_plan_(1 << order) {
+            temp_buffer_.resize(fft_plan_.temp_size);
+        }
+
+        void forward(std::span<C> in_buffer, std::span<C> out_buffer) {
+            fft_plan_.execute(out_buffer.data(), in_buffer.data(), temp_buffer_.data());
+        }
+
+    private:
+        kfr::dft_plan<F> fft_plan_;
+        kfr::univector<kfr::u8> temp_buffer_;
+    };
+}

@@ -1,3 +1,6 @@
 [submodule "kfr_impl/kfr"]
 	path = kfr_impl/kfr
 	url = https://github.com/kfrlib/kfr
+[submodule "google/benchmark"]
+	path = google/benchmark
+	url = https://github.com/google/benchmark

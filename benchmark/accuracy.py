@@ -36,11 +36,19 @@ def build_benchmark(algorithm):
 
 def run_benchmark(exe_path, n0, n1, algorithm):
     print(f"Running accuracy benchmark for {algorithm} from order {n0} to {n1}...")
+    print(f"{'Order':<10} {'MSE':<18}")
+    print("-" * 28)
+
+    mses = []
     for n in range(n0, n1 + 1):
         cmd = [exe_path, str(n)]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         mse = float(result.stdout)
-        print("order={}, mse={}".format(n, mse))
+        mses.append(mse)
+        print(f"{n:<10} {mse:<18.8e}")
+
+    print()
+    print(mses)
 
 
 def main():

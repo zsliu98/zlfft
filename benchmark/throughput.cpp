@@ -1,8 +1,10 @@
+#include <benchmark/benchmark.h>
+#include <iostream>
+#include <string>
 #include "benchmark_include.hpp"
 
-int main(const int, char** argv) {
-    const int order = std::stoi(argv[1]);
-    const size_t num_repeats = std::stoi(argv[2]);
+static void BM_Fft_Throughput(benchmark::State& state) {
+    const int order = state.range(0);
     const size_t n = static_cast<size_t>(1) << order;
 
     std::vector<C> in(n);
@@ -11,20 +13,33 @@ int main(const int, char** argv) {
 
     FFTClass fft(order);
 
-    // warm up
-    for (size_t i = 0; i < 50; ++i) {
+    for (auto _ : state) {
         fft.forward(in, out);
         fft.forward(out, in);
+        benchmark::DoNotOptimize(in.data());
+        benchmark::DoNotOptimize(out.data());
+        benchmark::ClobberMemory();
     }
 
-    const auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < (num_repeats >> 1); ++i) {
-        fft.forward(in, out);
-        fft.forward(out, in);
+    state.SetItemsProcessed(state.iterations() * n);
+}
+
+int main(int argc, char** argv) {
+    benchmark::Initialize(&argc, argv);
+
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <n0> <n1> [google-benchmark-flags]" << std::endl;
+        return 1;
     }
-    const auto end = std::chrono::high_resolution_clock::now();
-    const auto total_time_ms = std::chrono::duration<double, std::milli>(end - start).count();
-    const double avg_time_us = (total_time_ms * 1000.0) / num_repeats;
-    std::cout << std::scientific << avg_time_us << std::endl;
+
+    int n0 = std::stoi(argv[1]);
+    int n1 = std::stoi(argv[2]);
+
+    benchmark::RegisterBenchmark("BM_Fft_Throughput", BM_Fft_Throughput)
+        ->DenseRange(n0, n1, 1)
+        ->Unit(benchmark::kMicrosecond);
+
+    benchmark::RunSpecifiedBenchmarks();
+    benchmark::Shutdown();
     return 0;
 }

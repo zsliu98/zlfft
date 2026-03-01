@@ -20,7 +20,7 @@ int main(const int, char** argv) {
     std::vector<C> out_ref(n);
     std::vector<C> out_test(n);
 
-    zlfft::NaiveStockhamDITRadix2<F> ref_fft(order);
+    zlfft::NaiveStockhamRadix2<F> ref_fft(order);
     in_copy = in;
     ref_fft.forward(in_copy, out_ref);
 

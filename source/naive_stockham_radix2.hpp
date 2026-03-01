@@ -10,11 +10,11 @@
 
 namespace zlfft {
     template <typename F>
-    class NaiveStockhamDITRadix2 {
+    class NaiveStockhamRadix2 {
         using C = std::complex<F>;
 
     public:
-        explicit NaiveStockhamDITRadix2(const size_t order) {
+        explicit NaiveStockhamRadix2(const size_t order) {
             const auto n = static_cast<size_t>(1) << order;
             twiddles_.reserve(n - 1);
             for (size_t half = 1; half < n; half <<= 1) {
@@ -42,8 +42,8 @@ namespace zlfft {
                 for (size_t j = 0; j < (n >> 1); j += half) {
                     const C* __restrict group_in_a = &in[j];
                     const C* __restrict group_in_b = &in[j + (n >> 1)];
-                    C* __restrict group_out_a = &out[2 * j];
-                    C* __restrict group_out_b = &out[2 * j + half];
+                    C* __restrict group_out_a = &out[j << 1];
+                    C* __restrict group_out_b = &out[(j << 1) + half];
                     for (size_t k = 0; k < half; ++k) {
                         const auto a = group_in_a[k];
                         const auto b = group_in_b[k];

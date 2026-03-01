@@ -4,7 +4,7 @@ import os
 import sys
 import platform
 
-algos = ["kfr"]
+algos = ["kfr", "naive_stockham_radix2", "naive_cooley_radix2"]
 
 
 def build_benchmark(algorithm):

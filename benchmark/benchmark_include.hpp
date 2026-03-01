@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "../source/naive_stockham_dit_radix2.hpp"
+#include "../source/naive_stockham_radix2.hpp"
 
 
 #ifdef USE_DOUBLE
@@ -20,11 +20,14 @@ using F = float;
 #endif
 using C = std::complex<F>;
 
-#ifdef ENABLE_KFR
+#if defined(ENABLE_KFR)
 #include "../kfr_impl/kfr_impl.hpp"
 using FFTClass = zlbenchmark::KFRFFT<F>;
+#elif defined(ENABLE_NAIVE_COOLEY_RADIX2)
+#include "../source/naive_cooley_radix2.hpp"
+using FFTClass = zlfft::NaiveCooleyRadix2<F>;
 #else
-using FFTClass = zlfft::NaiveStockhamDITRadix2<F>;
+using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif
 
 void generate_random_data(std::vector<C>& data) {

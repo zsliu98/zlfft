@@ -5,7 +5,7 @@ import sys
 import platform
 import json
 
-algos = ["kfr", "naive_stockham_radix2", "naive_cooley_radix2", "stockham_radix2_kernel4"]
+algos = ["kfr", "naive_stockham_radix2", "naive_cooley_radix2", "stockham_radix2_kernel4", "fftw3"]
 
 
 def build_benchmark(algorithm):

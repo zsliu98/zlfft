@@ -23,6 +23,9 @@ using C = std::complex<F>;
 #if defined(ENABLE_KFR)
 #include "../kfr_impl/kfr_impl.hpp"
 using FFTClass = zlbenchmark::KFRFFT<F>;
+#elif defined(ENABLE_FFTW3)
+#include "../fftw3_impl/fftw3_impl.hpp"
+using FFTClass = zlbenchmark::FFTW3FFT<F>;
 #elif defined(ENABLE_NAIVE_COOLEY_RADIX2)
 #include "../source/naive_cooley_radix2.hpp"
 using FFTClass = zlfft::NaiveCooleyRadix2<F>;

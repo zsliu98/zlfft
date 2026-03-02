@@ -1,0 +1,75 @@
+#pragma once
+
+#include <fftw3.h>
+#include <span>
+#include <vector>
+#include <complex>
+#include <cassert>
+
+namespace zlbenchmark {
+
+    template <typename F>
+    class FFTW3FFT;
+
+    template <>
+    class FFTW3FFT<double> final {
+        using C = std::complex<double>;
+
+    public:
+        explicit FFTW3FFT(const size_t order) : size_(1 << order) {
+            auto* dummy_in = fftw_alloc_complex(size_);
+            auto* dummy_out = fftw_alloc_complex(size_);
+
+            plan_ = fftw_plan_dft_1d(size_, dummy_in, dummy_out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+            fftw_free(dummy_in);
+            fftw_free(dummy_out);
+        }
+
+        ~FFTW3FFT() {
+            fftw_destroy_plan(plan_);
+        }
+
+        void forward(std::span<C> in_buffer, std::span<C> out_buffer) {
+            auto* in_ptr = reinterpret_cast<fftw_complex*>(in_buffer.data());
+            auto* out_ptr = reinterpret_cast<fftw_complex*>(out_buffer.data());
+
+            fftw_execute_dft(plan_, in_ptr, out_ptr);
+        }
+
+    private:
+        size_t size_;
+        fftw_plan plan_;
+    };
+
+    template <>
+    class FFTW3FFT<float> final {
+        using C = std::complex<float>;
+
+    public:
+        explicit FFTW3FFT(const size_t order) : size_(1 << order) {
+            auto* dummy_in = fftwf_alloc_complex(size_);
+            auto* dummy_out = fftwf_alloc_complex(size_);
+
+            plan_ = fftwf_plan_dft_1d(size_, dummy_in, dummy_out, FFTW_FORWARD, FFTW_ESTIMATE);
+
+            fftwf_free(dummy_in);
+            fftwf_free(dummy_out);
+        }
+
+        ~FFTW3FFT() {
+            fftwf_destroy_plan(plan_);
+        }
+
+        void forward(std::span<C> in_buffer, std::span<C> out_buffer) {
+            auto* in_ptr = reinterpret_cast<fftwf_complex*>(in_buffer.data());
+            auto* out_ptr = reinterpret_cast<fftwf_complex*>(out_buffer.data());
+
+            fftwf_execute_dft(plan_, in_ptr, out_ptr);
+        }
+
+    private:
+        size_t size_;
+        fftwf_plan plan_;
+    };
+}

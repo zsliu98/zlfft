@@ -43,6 +43,17 @@ if (ENABLE_KFR)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_KFR)
 endif ()
 
+option(ENABLE_FFTW3 "Enable fftw3" OFF)
+if (ENABLE_FFTW3)
+    set(BUILD_TESTS OFF CACHE BOOL "Disable fftw3 tests" FORCE)
+    set(ENABLE_FLOAT ON CACHE BOOL "Enable single precision support" FORCE)
+    add_subdirectory(fftw3_impl/fftw3 EXCLUDE_FROM_ALL)
+    
+    target_link_libraries(zlfft_benchmark PRIVATE fftw3f)
+    target_include_directories(zlfft_benchmark PRIVATE fftw3_impl/fftw3/api)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_FFTW3)
+endif ()
+
 if (MSVC)
     target_compile_options(zlfft_benchmark PRIVATE $<$<CONFIG:RELEASE>:/fp:precise>)
 else ()

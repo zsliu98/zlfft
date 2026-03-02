@@ -31,3 +31,6 @@ cmake-build-relwithdebinfo
 packaging/Output/*
 build_accuracy
 build_throughput
+
+# fftw source code
+fftw3_impl/fftw3

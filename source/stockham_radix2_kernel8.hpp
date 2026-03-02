@@ -10,11 +10,11 @@
 
 namespace zlfft {
     template <typename F>
-    class StockhamRadix2Kernel4 {
+    class StockhamRadix2Kernel8 {
         using C = std::complex<F>;
 
     public:
-        explicit StockhamRadix2Kernel4(const size_t order) {
+        explicit StockhamRadix2Kernel8(const size_t order) {
             const auto n = static_cast<size_t>(1) << order;
             twiddles_.reserve(n - 1);
             for (size_t half = 1; half < n; half <<= 1) {
@@ -40,8 +40,10 @@ namespace zlfft {
 
             kernel12(in, out, n);
             kernel4(out, in, n);
-            const C* __restrict w_ptr = twiddles_.data() + 7;
-            for (size_t half = 8; half < n; half <<= 1) {
+            kernel8(in, out, n);
+            std::swap(in, out);
+            const C* __restrict w_ptr = twiddles_.data() + 15;
+            for (size_t half = 16; half < n; half <<= 1) {
                 for (size_t j = 0; j < (n >> 1); j += half) {
                     const C* __restrict group_in_a = &in[j];
                     const C* __restrict group_in_b = &in[j + (n >> 1)];
@@ -85,7 +87,7 @@ namespace zlfft {
                 const C t1 = x0 - x2;
                 const C t2 = x1 + x3;
                 const C t3 = x1 - x3;
-                const C t3_neg_i = { t3.imag(), -t3.real() };
+                const C t3_neg_i = {t3.imag(), -t3.real()};
                 C* __restrict out_ptr = &out[j << 2];
                 out_ptr[0] = t0 + t2;
                 out_ptr[1] = t1 + t3_neg_i;
@@ -101,13 +103,15 @@ namespace zlfft {
                 const C* __restrict group_in_b = &in[j + (n >> 1)];
                 C* __restrict group_out_a = &out[j << 1];
                 C* __restrict group_out_b = &out[(j << 1) + 4];
-                { // twiddle = 1
+                {
+                    // twiddle = 1
                     const C a = group_in_a[0];
                     const C b = group_in_b[0];
                     group_out_a[0] = a + b;
                     group_out_b[0] = a - b;
                 }
-                { // twiddle = exp(-i * pi/4)
+                {
+                    // twiddle = exp(-i * pi/4)
                     const C a = group_in_a[1];
                     const C b = group_in_b[1];
                     const C v = {
@@ -117,14 +121,16 @@ namespace zlfft {
                     group_out_a[1] = a + v;
                     group_out_b[1] = a - v;
                 }
-                { // twiddle = -i
+                {
+                    // twiddle = -i
                     const C a = group_in_a[2];
                     const C b = group_in_b[2];
                     const C v = {b.imag(), -b.real()};
                     group_out_a[2] = a + v;
                     group_out_b[2] = a - v;
                 }
-                { // twiddle = exp(-i * 3pi/4)
+                {
+                    // twiddle = exp(-i * 3pi/4)
                     const C a = group_in_a[3];
                     const C b = group_in_b[3];
                     const C v = {
@@ -133,6 +139,101 @@ namespace zlfft {
                     };
                     group_out_a[3] = a + v;
                     group_out_b[3] = a - v;
+                }
+            }
+        }
+
+        void kernel8(C* __restrict in, C* __restrict out, const size_t n) {
+            static constexpr F kCosPi8 = static_cast<F>(0.92387953251128675613);
+            static constexpr F kSinPi8 = static_cast<F>(0.38268343236508977173);
+            static constexpr F kInvSqrt2 = static_cast<F>(1.0 / std::numbers::sqrt2);
+
+            for (size_t j = 0; j < (n >> 1); j += 8) {
+                const C* __restrict group_in_a = &in[j];
+                const C* __restrict group_in_b = &in[j + (n >> 1)];
+                C* __restrict group_out_a = &out[j << 1];
+                C* __restrict group_out_b = &out[(j << 1) + 8];
+                {
+                    // twiddle = 1
+                    const C a = group_in_a[0];
+                    const C b = group_in_b[0];
+                    group_out_a[0] = a + b;
+                    group_out_b[0] = a - b;
+                }
+                {
+                    // twiddle = exp(-i * pi/8)
+                    const C a = group_in_a[1];
+                    const C b = group_in_b[1];
+                    const C v = {
+                        b.real() * kCosPi8 + b.imag() * kSinPi8,
+                        b.imag() * kCosPi8 - b.real() * kSinPi8
+                    };
+                    group_out_a[1] = a + v;
+                    group_out_b[1] = a - v;
+                }
+                {
+                    // twiddle = exp(-i * pi/4)
+                    const C a = group_in_a[2];
+                    const C b = group_in_b[2];
+                    const C v = {
+                        (b.real() + b.imag()) * kInvSqrt2,
+                        (b.imag() - b.real()) * kInvSqrt2
+                    };
+                    group_out_a[2] = a + v;
+                    group_out_b[2] = a - v;
+                }
+                {
+                    // twiddle = exp(-i * 3pi/8)
+                    const C a = group_in_a[3];
+                    const C b = group_in_b[3];
+                    // (br + i*bi) * (S1 - i*C1)
+                    const C v = {
+                        b.real() * kSinPi8 + b.imag() * kCosPi8,
+                        b.imag() * kSinPi8 - b.real() * kCosPi8
+                    };
+                    group_out_a[3] = a + v;
+                    group_out_b[3] = a - v;
+                }
+                {
+                    // twiddle = -i
+                    const C a = group_in_a[4];
+                    const C b = group_in_b[4];
+                    const C v = {b.imag(), -b.real()};
+                    group_out_a[4] = a + v;
+                    group_out_b[4] = a - v;
+                }
+                {
+                    // twiddle = exp(-i * 5pi/8)
+                    const C a = group_in_a[5];
+                    const C b = group_in_b[5];
+                    const C v = {
+                        -b.real() * kSinPi8 + b.imag() * kCosPi8,
+                        -b.real() * kCosPi8 - b.imag() * kSinPi8
+                    };
+                    group_out_a[5] = a + v;
+                    group_out_b[5] = a - v;
+                }
+                {
+                    // twiddle = exp(-i * 3pi/4)
+                    const C a = group_in_a[6];
+                    const C b = group_in_b[6];
+                    const C v = {
+                        (b.imag() - b.real()) * kInvSqrt2,
+                        (-b.real() - b.imag()) * kInvSqrt2
+                    };
+                    group_out_a[6] = a + v;
+                    group_out_b[6] = a - v;
+                }
+                {
+                    // twiddle = exp(-i * 7pi/8)
+                    const C a = group_in_a[7];
+                    const C b = group_in_b[7];
+                    const C v = {
+                        -b.real() * kCosPi8 + b.imag() * kSinPi8,
+                        -b.real() * kSinPi8 - b.imag() * kCosPi8
+                    };
+                    group_out_a[7] = a + v;
+                    group_out_b[7] = a - v;
                 }
             }
         }

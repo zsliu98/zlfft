@@ -5,7 +5,7 @@ import sys
 import platform
 import json
 
-algos = ["kfr", "naive_stockham_radix2", "naive_cooley_radix2"]
+algos = ["kfr", "naive_stockham_radix2", "naive_cooley_radix2", "stockham_radix2_kernel4"]
 
 
 def build_benchmark(algorithm):
@@ -26,11 +26,11 @@ def build_benchmark(algorithm):
             cmake_cmd.append(f"-DENABLE_{algo.upper()}=OFF")
 
     print(f"Configuring: {' '.join(cmake_cmd)}")
-    subprocess.run(cmake_cmd, cwd=build_dir, check=True)
+    subprocess.run(cmake_cmd, capture_output=True, cwd=build_dir, check=True)
 
     build_cmd = ["cmake", "--build", ".", "--target", "zlfft_benchmark", "--config", "Release", "-j"]
     print(f"Building: {' '.join(build_cmd)}")
-    subprocess.run(build_cmd, cwd=build_dir, check=True)
+    subprocess.run(build_cmd, capture_output=True, cwd=build_dir, check=True)
 
     return os.path.join(build_dir, "zlfft_benchmark")
 
@@ -81,7 +81,7 @@ def main():
     parser = argparse.ArgumentParser(description="Throughput Benchmark for FFT")
     parser.add_argument("n0", type=int, help="Start FFT order (size 2^n)")
     parser.add_argument("n1", type=int, help="End FFT order (size 2^n)")
-    parser.add_argument("algorithm", type=str, help="Algorithm to test (e.g., naive_stockham_dit_radix2, kfr)")
+    parser.add_argument("algorithm", type=str, help="Algorithm to test (e.g., naive_stockham_radix2, kfr)")
 
     args = parser.parse_args()
 

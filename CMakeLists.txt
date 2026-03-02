@@ -29,9 +29,14 @@ if (ENABLE_NAIVE_COOLEY_RADIX2)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_NAIVE_COOLEY_RADIX2)
 endif ()
 
-option(ENABLE_STOCKHAM_RADIX2_KERNEL4 "Enable stockham_radix_kernel4" OFF)
+option(ENABLE_STOCKHAM_RADIX2_KERNEL4 "Enable stockham_radix2_kernel4" OFF)
 if (ENABLE_STOCKHAM_RADIX2_KERNEL4)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_STOCKHAM_RADIX2_KERNEL4)
+endif ()
+
+option(ENABLE_NAIVE_STOCKHAM_RADIX4 "Enable naive_stockham_randix4" OFF)
+if (ENABLE_NAIVE_STOCKHAM_RADIX4)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_NAIVE_STOCKHAM_RADIX4)
 endif ()
 
 option(ENABLE_KFR "Enable kfr" OFF)

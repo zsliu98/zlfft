@@ -32,6 +32,9 @@ using FFTClass = zlfft::NaiveCooleyRadix2<F>;
 #elif defined(ENABLE_STOCKHAM_RADIX2_KERNEL4)
 #include "../source/stockham_radix2_kernel4.hpp"
 using FFTClass = zlfft::StockhamRadix2Kernel4<F>;
+#elif defined(ENABLE_NAIVE_STOCKHAM_RADIX4)
+#include "../source/naive_stockham_radix4.hpp"
+using FFTClass = zlfft::NaiveStockhamRadix4<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

@@ -20,7 +20,7 @@ namespace zlbenchmark {
             auto* dummy_in = fftw_alloc_complex(size_);
             auto* dummy_out = fftw_alloc_complex(size_);
 
-            plan_ = fftw_plan_dft_1d(size_, dummy_in, dummy_out, FFTW_FORWARD, FFTW_ESTIMATE);
+            plan_ = fftw_plan_dft_1d(size_, dummy_in, dummy_out, FFTW_FORWARD, FFTW_MEASURE);
 
             fftw_free(dummy_in);
             fftw_free(dummy_out);
@@ -51,7 +51,7 @@ namespace zlbenchmark {
             auto* dummy_in = fftwf_alloc_complex(size_);
             auto* dummy_out = fftwf_alloc_complex(size_);
 
-            plan_ = fftwf_plan_dft_1d(size_, dummy_in, dummy_out, FFTW_FORWARD, FFTW_ESTIMATE);
+            plan_ = fftwf_plan_dft_1d(size_, dummy_in, dummy_out, FFTW_FORWARD, FFTW_MEASURE);
 
             fftwf_free(dummy_in);
             fftwf_free(dummy_out);

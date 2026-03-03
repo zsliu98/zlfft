@@ -7,3 +7,6 @@
 [submodule "google/highway"]
 	path = google/highway
 	url = https://github.com/google/highway
+[submodule "fftw3_impl/fftw3"]
+	path = fftw3_impl/fftw3
+	url = https://github.com/zsliu98/fftw3-mirror

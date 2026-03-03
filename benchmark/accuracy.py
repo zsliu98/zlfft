@@ -5,8 +5,8 @@ import sys
 import platform
 
 algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4",
-         "stockham_radix2_kernel4", "stockham_radix2_kernel8",
-         "simd_stockham_radix2", "simd_stockham_radix2_kernel1",
+         "stockham_radix2_kernel24", "stockham_radix2_kernel248",
+         "simd_stockham_radix2", "simd_stockham_radix2_kernel1", "simd_stockham_radix2_kernel2",
          "fftw3", "kfr"]
 
 

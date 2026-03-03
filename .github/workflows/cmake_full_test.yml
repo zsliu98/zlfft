@@ -37,4 +37,4 @@ jobs:
 
       - name: simd_stockham_radix2_kernel1 Throughput Test
         shell: bash
-        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix2_kernel1
+        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix2_kernel2

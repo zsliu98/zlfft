@@ -30,21 +30,24 @@ using FFTClass = zlbenchmark::FFTW3FFT<F>;
 #elif defined(ENABLE_NAIVE_COOLEY_RADIX2)
 #include "../source/naive_cooley_radix2.hpp"
 using FFTClass = zlfft::NaiveCooleyRadix2<F>;
-#elif defined(ENABLE_STOCKHAM_RADIX2_KERNEL4)
-#include "../source/stockham_radix2_kernel4.hpp"
-using FFTClass = zlfft::StockhamRadix2Kernel4<F>;
+#elif defined(ENABLE_STOCKHAM_RADIX2_KERNEL24)
+#include "../source/stockham_radix2_kernel24.hpp"
+using FFTClass = zlfft::StockhamRadix2Kernel24<F>;
 #elif defined(ENABLE_NAIVE_STOCKHAM_RADIX4)
 #include "../source/naive_stockham_radix4.hpp"
 using FFTClass = zlfft::NaiveStockhamRadix4<F>;
-#elif defined(ENABLE_STOCKHAM_RADIX2_KERNEL8)
-#include "../source/stockham_radix2_kernel8.hpp"
-using FFTClass = zlfft::StockhamRadix2Kernel8<F>;
+#elif defined(ENABLE_STOCKHAM_RADIX2_KERNEL248)
+#include "../source/stockham_radix2_kernel248.hpp"
+using FFTClass = zlfft::StockhamRadix2Kernel248<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX2)
 #include "../source/simd_stockham_radix2.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix2<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL1)
 #include "../source/simd_stockham_radix2_kernel1.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix2Kernel1<F>;
+#elif defined(ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL2)
+#include "../source/simd_stockham_radix2_kernel2.hpp"
+using FFTClass = zlfft::SIMDStockhamRadix2Kernel2<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

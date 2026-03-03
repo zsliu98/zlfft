@@ -10,11 +10,11 @@
 
 namespace zlfft {
     template <typename F>
-    class StockhamRadix2Kernel8 {
+    class StockhamRadix2Kernel248 {
         using C = std::complex<F>;
 
     public:
-        explicit StockhamRadix2Kernel8(const size_t order) {
+        explicit StockhamRadix2Kernel248(const size_t order) {
             const auto n = static_cast<size_t>(1) << order;
             twiddles_.reserve(n - 1);
             for (size_t half = 1; half < n; half <<= 1) {

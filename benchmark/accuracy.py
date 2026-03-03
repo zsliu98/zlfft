@@ -6,7 +6,7 @@ import platform
 
 algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4",
          "stockham_radix2_kernel4", "stockham_radix2_kernel8",
-         "simd_stockham_radix2",
+         "simd_stockham_radix2", "simd_stockham_radix2_kernel1",
          "fftw3", "kfr"]
 
 

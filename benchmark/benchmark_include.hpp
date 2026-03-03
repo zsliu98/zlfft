@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "simd_stockham_radix2_kernel1.hpp"
 #include "../source/naive_stockham_radix2.hpp"
 
 
@@ -41,6 +42,9 @@ using FFTClass = zlfft::StockhamRadix2Kernel8<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX2)
 #include "../source/simd_stockham_radix2.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix2<F>;
+#elif defined(ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL1)
+#include "../source/simd_stockham_radix2_kernel1.hpp"
+using FFTClass = zlfft::SIMDStockhamRadix2Kernel1<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

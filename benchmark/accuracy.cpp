@@ -1,6 +1,6 @@
 #include "benchmark_include.hpp"
 
-F calculate_mse(const std::vector<C>& ref, const std::vector<C>& test) {
+F calculate_mse(const std::span<C> ref, const std::span<C> test) {
     double mse = 0.0;
     for (size_t i = 0; i < ref.size(); ++i) {
         const auto r_diff = ref[i].real() - test[i].real();
@@ -14,11 +14,11 @@ int main(const int, char** argv) {
     const int order = std::stoi(argv[1]);
     const size_t n = static_cast<size_t>(1) << order;
 
-    std::vector<C> in(n);
-    std::vector<C> in_copy;
+    std::vector<C, AlignedAllocator<std::complex<float>>> in(n);
+    std::vector<C, AlignedAllocator<std::complex<float>>> in_copy;
     generate_random_data(in);
-    std::vector<C> out_ref(n);
-    std::vector<C> out_test(n);
+    std::vector<C, AlignedAllocator<std::complex<float>>> out_ref(n);
+    std::vector<C, AlignedAllocator<std::complex<float>>> out_test(n);
 
     zlfft::NaiveStockhamRadix2<F> ref_fft(order);
     in_copy = in;

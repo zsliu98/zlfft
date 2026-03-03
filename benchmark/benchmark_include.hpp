@@ -9,6 +9,7 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <new>
 
 #include "simd_stockham_radix2_kernel1.hpp"
 #include "../source/naive_stockham_radix2.hpp"
@@ -55,10 +56,39 @@ using FFTClass = zlfft::SIMDStockhamRadix2Kernel24<F>;
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif
 
-inline void generate_random_data(std::vector<C>& data) {
+inline void generate_random_data(std::span<C> data) {
     std::mt19937 gen(42); // Fixed seed for reproducibility
     std::uniform_real_distribution<F> dist(static_cast<F>(-1.0), static_cast<F>(1.0));
     for (auto& x : data) {
         x = C(dist(gen), dist(gen));
     }
 }
+
+template <typename T, std::size_t Align = 64>
+struct AlignedAllocator {
+    using value_type = T;
+    template <class U>
+    struct rebind {
+        using other = AlignedAllocator<U, Align>;
+    };
+
+    AlignedAllocator() = default;
+
+    template <class U>
+    constexpr AlignedAllocator(const AlignedAllocator<U, Align>&) noexcept {}
+
+    T* allocate(std::size_t n) {
+        if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            throw std::bad_alloc();
+
+        void* ptr = ::operator new(n * sizeof(T), std::align_val_t(Align));
+        return static_cast<T*>(ptr);
+    }
+
+    void deallocate(T* p, std::size_t) noexcept {
+        ::operator delete(p, std::align_val_t(Align));
+    }
+
+    bool operator==(const AlignedAllocator&) const { return true; }
+    bool operator!=(const AlignedAllocator&) const { return false; }
+};

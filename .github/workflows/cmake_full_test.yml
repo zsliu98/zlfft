@@ -1,0 +1,40 @@
+name: macOS/Windows/Linux Test
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build_and_test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: KFR Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 kfr
+
+      - name: FFTW3 Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 fftw3
+
+      - name: simd_stockham_radix2_kernel1 Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix2_kernel1

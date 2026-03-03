@@ -124,22 +124,22 @@ namespace zlfft {
                     using V = hn::Vec<decltype(d)>;
                     V a_re, a_im, b_re, b_im;
 
-                    hn::LoadInterleaved2(d, in_ptr_a + 2 * j, a_re, a_im);
-                    hn::LoadInterleaved2(d, in_ptr_b + 2 * j, b_re, b_im);
+                    hn::LoadInterleaved2(d, in_ptr_a + (j << 1), a_re, a_im);
+                    hn::LoadInterleaved2(d, in_ptr_b + (j << 1), b_re, b_im);
 
                     auto sum_re = hn::Add(a_re, b_re);
                     auto sum_im = hn::Add(a_im, b_im);
                     auto diff_re = hn::Sub(a_re, b_re);
                     auto diff_im = hn::Sub(a_im, b_im);
 
-                    hn::StoreInterleaved4(sum_re, sum_im, diff_re, diff_im, d, out_ptr + 4 * j);
+                    hn::StoreInterleaved4(sum_re, sum_im, diff_re, diff_im, d, out_ptr + (j << 2));
                 }
             }
             for (; j < half_n; ++j) {
                 const auto a = in[j];
                 const auto b = in[j + half_n];
-                out[2 * j] = a + b;
-                out[2 * j + 1] = a - b;
+                out[j << 1] = a + b;
+                out[(j << 1) + 1] = a - b;
             }
         }
     };

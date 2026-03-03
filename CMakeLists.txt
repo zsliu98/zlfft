@@ -59,6 +59,11 @@ if (ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL2)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL2)
 endif ()
 
+option(ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL24 "Enable simd_stockham_radix2_kernel24" OFF)
+if (ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL24)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL24)
+endif ()
+
 option(ENABLE_KFR "Enable kfr" OFF)
 if (ENABLE_KFR)
     set(KFR_USE_BOOST_MATH OFF CACHE BOOL "Disable Boost Math usage in kfr" FORCE)

@@ -48,6 +48,9 @@ using FFTClass = zlfft::SIMDStockhamRadix2Kernel1<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL2)
 #include "../source/simd_stockham_radix2_kernel2.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix2Kernel2<F>;
+#elif defined(ENABLE_SIMD_STOCKHAM_RADIX2_KERNEL24)
+#include "../source/simd_stockham_radix2_kernel24.hpp"
+using FFTClass = zlfft::SIMDStockhamRadix2Kernel24<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

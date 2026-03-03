@@ -5,37 +5,7 @@ import sys
 import platform
 import json
 
-algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4",
-         "stockham_radix2_kernel24", "stockham_radix2_kernel248",
-         "simd_stockham_radix2", "simd_stockham_radix2_kernel1", "simd_stockham_radix2_kernel2",
-         "fftw3", "kfr"]
-
-
-def build_benchmark(algorithm):
-    build_dir = "build_throughput"
-    os.makedirs(build_dir, exist_ok=True)
-
-    cmake_cmd = ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release", "-DACCURACY_TEST=OFF", "-DTHROUGHPUT_TEST=ON"]
-
-    if platform.system() == "Windows":
-        cmake_cmd += ["-DCMAKE_C_COMPILER=clang-cl", "-DCMAKE_CXX_COMPILER=clang-cl"]
-    if platform.system() == "Linux":
-        cmake_cmd += ["-DCMAKE_C_COMPILER=clang", "-DCMAKE_CXX_COMPILER=clang++"]
-
-    for algo in algos:
-        if algo == algorithm:
-            cmake_cmd.append(f"-DENABLE_{algo.upper()}=ON")
-        else:
-            cmake_cmd.append(f"-DENABLE_{algo.upper()}=OFF")
-
-    print(f"Configuring: {' '.join(cmake_cmd)}")
-    subprocess.run(cmake_cmd, capture_output=True, cwd=build_dir, check=True)
-
-    build_cmd = ["cmake", "--build", ".", "--target", "zlfft_benchmark", "--config", "Release", "-j"]
-    print(f"Building: {' '.join(build_cmd)}")
-    subprocess.run(build_cmd, capture_output=True, cwd=build_dir, check=True)
-
-    return os.path.join(build_dir, "zlfft_benchmark")
+from build_config import build_benchmark
 
 
 def run_benchmark(exe_path, n0, n1, algorithm):
@@ -89,7 +59,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        exe_path = build_benchmark(args.algorithm)
+        exe_path = build_benchmark(args.algorithm, "throughput")
         run_benchmark(exe_path, args.n0, args.n1, args.algorithm)
     except subprocess.CalledProcessError as e:
         print(f"Error executing benchmark: {e}")

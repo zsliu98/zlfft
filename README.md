@@ -6,7 +6,7 @@ zlfft aims at FFT implementation and analysis.
 
 Please make sure `Clang` (`AppleClang 16+` or `LLVM/Clang 17+`), `cmake` (minimum 3.20) are installed and configured on your OS.
 
-You may need to edit the building commands in `benchmark/accuracy.py` and `benchmark/throughput.py`.
+You may need to edit the building commands in `benchmark/build_config.py`.
 
 ### Accuracy Benchmark
 
@@ -69,6 +69,7 @@ SIMD-accelerated algorithms, which utilize Google Highway:
 - `simd_stockham_radix2`
 - `simd_stockham_radix2_kernel1` 
 - `simd_stockham_radix2_kernel2`
+- `simd_stockham_radix2_kernel24`
 
 External libraries:
 

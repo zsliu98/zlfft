@@ -5,14 +5,14 @@
 #include <complex>
 #include <iomanip>
 #include <iostream>
+#include <new>
 #include <random>
 #include <span>
 #include <string>
 #include <vector>
-#include <new>
 
-#include "simd_stockham_radix2_kernel1.hpp"
 #include "../source/naive_stockham_radix2.hpp"
+#include "simd_stockham_radix2_kernel1.hpp"
 
 
 #ifdef USE_DOUBLE
@@ -22,7 +22,10 @@ using F = float;
 #endif
 using C = std::complex<F>;
 
-#if defined(ENABLE_KFR)
+#if defined(ENABLE_VDSP)
+#include "../vdsp_impl/vdsp_impl.hpp"
+using FFTClass = zlbenchmark::VDSPFFT<F>;
+#elif defined(ENABLE_KFR)
 #include "../kfr_impl/kfr_impl.hpp"
 using FFTClass = zlbenchmark::KFRFFT<F>;
 #elif defined(ENABLE_FFTW3)
@@ -58,6 +61,9 @@ using FFTClass = zlfft::SIMDStockhamRadix2Kernel248<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX4)
 #include "../source/simd_stockham_radix4.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix4<F>;
+#elif defined(ENABLE_SIMD_STOCKHAM_RADIX4_OPT)
+#include "../source/simd_stockham_radix4_opt.hpp"
+using FFTClass = zlfft::SIMDStockhamRadix4Opt<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif
@@ -91,9 +97,7 @@ struct AlignedAllocator {
         return static_cast<T*>(ptr);
     }
 
-    void deallocate(T* p, std::size_t) noexcept {
-        ::operator delete(p, std::align_val_t(Align));
-    }
+    void deallocate(T* p, std::size_t) noexcept { ::operator delete(p, std::align_val_t(Align)); }
 
     bool operator==(const AlignedAllocator&) const { return true; }
     bool operator!=(const AlignedAllocator&) const { return false; }

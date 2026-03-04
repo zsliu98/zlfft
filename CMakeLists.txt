@@ -74,6 +74,19 @@ if (ENABLE_SIMD_STOCKHAM_RADIX4)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4)
 endif ()
 
+option(ENABLE_SIMD_STOCKHAM_RADIX4_OPT "Enable simd_stockham_radix4_opt" OFF)
+if (ENABLE_SIMD_STOCKHAM_RADIX4_OPT)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4_OPT)
+endif ()
+
+
+option(ENABLE_VDSP "Enable vDSP" OFF)
+if (ENABLE_VDSP)
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
+    target_link_libraries(zlfft_benchmark PRIVATE ${ACCELERATE_FRAMEWORK})
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_VDSP)
+endif ()
+
 option(ENABLE_KFR "Enable kfr" OFF)
 if (ENABLE_KFR)
     set(KFR_USE_BOOST_MATH OFF CACHE BOOL "Disable Boost Math usage in kfr" FORCE)

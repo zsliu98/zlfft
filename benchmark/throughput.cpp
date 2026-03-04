@@ -13,11 +13,18 @@ static void BM_Fft_Throughput(benchmark::State& state) {
 
     FFTClass fft(order);
 
-    for (auto _ : state) {
+    for (int i = 0; i < 3; ++i) {
         fft.forward(in, out);
         fft.forward(out, in);
-        benchmark::DoNotOptimize(in.data());
+    }
+    benchmark::ClobberMemory();
+
+    for (auto _ : state) {
+        fft.forward(in, out);
         benchmark::DoNotOptimize(out.data());
+        benchmark::ClobberMemory();
+        fft.forward(out, in);
+        benchmark::DoNotOptimize(in.data());
         benchmark::ClobberMemory();
     }
 

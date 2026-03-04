@@ -22,7 +22,10 @@ using F = float;
 #endif
 using C = std::complex<F>;
 
-#if defined(ENABLE_VDSP)
+#if defined(ENABLE_PFFFT)
+#include "../pffft_impl/pffft_impl.hpp"
+using FFTClass = zlbenchmark::PffftFFT<F>;
+#elif defined(ENABLE_VDSP)
 #include "../vdsp_impl/vdsp_impl.hpp"
 using FFTClass = zlbenchmark::VDSPFFT<F>;
 #elif defined(ENABLE_KFR)

@@ -16,7 +16,7 @@ algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4"
          "simd_stockham_radix4",
          "simd_stockham_radix4_opt",
 
-         "fftw3", "kfr", "vdsp"]
+         "fftw3", "kfr", "vdsp", "pffft"]
 
 
 def build_benchmark(algorithm, benchmark_type):

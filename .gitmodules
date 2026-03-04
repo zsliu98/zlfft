@@ -10,3 +10,6 @@
 [submodule "fftw3_impl/fftw3"]
 	path = fftw3_impl/fftw3
 	url = https://github.com/zsliu98/fftw3-mirror
+[submodule "pffft_impl/pffft"]
+	path = pffft_impl/pffft
+	url = https://github.com/marton78/pffft

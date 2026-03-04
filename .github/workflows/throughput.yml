@@ -37,6 +37,6 @@ jobs:
         shell: bash
         run: python -u benchmark/throughput.py 5 25 fftw3
 
-      - name: simd_stockham_radix2_kernel24 Throughput Test
+      - name: simd_stockham_radix4 Throughput Test
         shell: bash
-        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix2_kernel24
+        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix4

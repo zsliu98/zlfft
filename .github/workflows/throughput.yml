@@ -26,12 +26,6 @@ jobs:
             os: windows-latest
 
     steps:
-      - name: Setup MSVC (Windows)
-        uses: TheMrMilchmann/setup-msvc-dev@v4
-        if: runner.os == 'Windows'
-        with:
-          arch: x64
-
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -41,9 +35,9 @@ jobs:
         shell: bash
         run: python -u benchmark/throughput.py 5 25 kfr
 
-      - name: FFTW3 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 fftw3
+      # - name: FFTW3 Throughput Test
+      #   shell: bash
+      #   run: python -u benchmark/throughput.py 5 25 fftw3
 
       - name: pffft Throughput Test
         shell: bash

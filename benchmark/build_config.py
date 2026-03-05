@@ -40,11 +40,30 @@ def build_benchmark(algorithm, benchmark_type):
         else:
             cmake_cmd.append(f"-DENABLE_{algo.upper()}=OFF")
 
-    print(f"Configuring: {' '.join(cmake_cmd)}")
-    subprocess.run(cmake_cmd, capture_output=True, cwd=build_dir, check=True)
-
     build_cmd = ["cmake", "--build", ".", "--target", "zlfft_benchmark", "--config", "Release", "-j"]
-    print(f"Building: {' '.join(build_cmd)}")
-    subprocess.run(build_cmd, capture_output=True, cwd=build_dir, check=True)
 
-    return os.path.join(build_dir, "zlfft_benchmark")
+    if platform.system() == "Windows":
+        vcvars = '"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat"'
+
+        cmake_cmd_str = " ".join(cmake_cmd)
+        full_cmake_cmd = f'call {vcvars} && {cmake_cmd_str}'
+        
+        build_cmd_str = " ".join(build_cmd)
+        full_build_cmd = f'call {vcvars} && {build_cmd_str}'
+
+        print(f"Configuring: {full_cmake_cmd}")
+        subprocess.run(full_cmake_cmd, capture_output=True, cwd=build_dir, check=True, shell=True)
+
+        print(f"Building: {full_build_cmd}")
+        subprocess.run(full_build_cmd, capture_output=True, cwd=build_dir, check=True, shell=True)
+        
+        return os.path.join(build_dir, "zlfft_benchmark.exe")
+
+    else:
+        print(f"Configuring: {cmake_cmd}")
+        subprocess.run(cmake_cmd, capture_output=True, cwd=build_dir, check=True)
+
+        print(f"Building: {build_cmd}")
+        subprocess.run(build_cmd, capture_output=True, cwd=build_dir, check=True)
+
+        return os.path.join(build_dir, "zlfft_benchmark")

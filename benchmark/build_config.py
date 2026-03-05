@@ -23,7 +23,7 @@ def build_benchmark(algorithm, benchmark_type):
     build_dir = "build_accuracy"
     os.makedirs(build_dir, exist_ok=True)
 
-    cmake_cmd = ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release"]
+    cmake_cmd = ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release", "-G", "Ninja"]
     if benchmark_type == "accuracy":
         cmake_cmd += ["-DACCURACY_TEST=ON", "-DTHROUGHPUT_TEST=OFF"]
     elif benchmark_type == "throughput":

@@ -35,9 +35,9 @@ jobs:
         shell: bash
         run: python -u benchmark/throughput.py 5 25 kfr
 
-      - name: FFTW3 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 fftw3
+#      - name: FFTW3 Throughput Test
+#        shell: bash
+#        run: python -u benchmark/throughput.py 5 25 fftw3
 
       - name: pffft Throughput Test
         if: ${{ runner.os != 'Windows' }}
@@ -47,3 +47,11 @@ jobs:
       - name: simd_stockham_radix4 Throughput Test
         shell: bash
         run: python -u benchmark/throughput.py 5 25 simd_stockham_radix4
+
+      - name: simd_stockham_radix4_soa Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix4_soa
+
+      - name: simd_stockham_radix4_opt1 Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 simd_stockham_radix4_opt1

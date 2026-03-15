@@ -70,11 +70,14 @@ SIMD-accelerated algorithms, which utilize Google Highway:
 - `simd_stockham_radix2_kernel1` 
 - `simd_stockham_radix2_kernel2`
 - `simd_stockham_radix2_kernel24`
+- `simd_stockham_radix4`
 
 External libraries:
 
 - `fftw3`
 - `kfr`
+- `pffft`
+- `vdsp`
 
 ## License
 
@@ -84,5 +87,6 @@ All external libraries (submodules) are not covered by this license. All tradema
 
 - FFTW3: `fftw3_impl/fftw3` (GPL-2.0 license)
 - KFR: `kfr_impl/kfr` (GPL-2.0 license)
+- pffft: `pffft_impl/pffft` (BSD-like license)
 - Google benchmark: `google/benchmark` (Apache-2.0 license)
 - Google highway: `google/highway` (Apache-2.0 license)

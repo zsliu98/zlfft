@@ -74,9 +74,19 @@ if (ENABLE_SIMD_STOCKHAM_RADIX4)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4)
 endif ()
 
-option(ENABLE_SIMD_STOCKHAM_RADIX4_OPT "Enable simd_stockham_radix4_opt" OFF)
-if (ENABLE_SIMD_STOCKHAM_RADIX4_OPT)
-    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4_OPT)
+option(ENABLE_SIMD_STOCKHAM_RADIX4_SOA "Enable simd_stockham_radix4_soa" OFF)
+if (ENABLE_SIMD_STOCKHAM_RADIX4_SOA)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4_SOA)
+endif ()
+
+option(ENABLE_SIMD_STOCKHAM_RADIX8 "Enable simd_stockham_radix8" OFF)
+if (ENABLE_SIMD_STOCKHAM_RADIX8)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX8)
+endif ()
+
+option(ENABLE_SIMD_STOCKHAM_RADIX4_OPT1 "Enable simd_stockham_radix4_opt1" OFF)
+if (ENABLE_SIMD_STOCKHAM_RADIX4_OPT1)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4_OPT1)
 endif ()
 
 option(ENABLE_PFFFT "Enable pffft" OFF)

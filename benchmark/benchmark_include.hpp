@@ -73,6 +73,9 @@ using FFTClass = zlfft::SIMDStockhamRadix8<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX4_OPT1)
 #include "../source/simd_stockham_radix4_opt1.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix4OPT1<F>;
+#elif defined(ENABLE_SIMD_STOCKHAM_RADIX4_SOA_KERNEL4)
+#include "../source/simd_stockham_radix4_soa_kernel4.hpp"
+using FFTClass = zlfft::SIMDStockhamRadix4SOAKernel4<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

@@ -94,6 +94,11 @@ if (ENABLE_SIMD_STOCKHAM_RADIX4_SOA_KERNEL4)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4_SOA_KERNEL4)
 endif ()
 
+option(ENABLE_SIMD_STOCKHAM_RADIX4_SOA "Enable simd_stockham_radix4_soa_kernel4_opt1" OFF)
+if (ENABLE_SIMD_STOCKHAM_RADIX4_SOA_KERNEL4_OPT1)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_STOCKHAM_RADIX4_SOA_KERNEL4_OPT1)
+endif ()
+
 option(ENABLE_PFFFT "Enable pffft" OFF)
 if (ENABLE_PFFFT)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")

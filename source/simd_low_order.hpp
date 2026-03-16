@@ -299,8 +299,8 @@ namespace zlfft {
                 const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
                 const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
 
-                auto r0 = hn::Load(d, in_r + j);
-                auto i0 = hn::Load(d, in_i + j);
+                const auto r0 = hn::Load(d, in_r + j);
+                const auto i0 = hn::Load(d, in_i + j);
 
                 const auto s0_r = hn::Add(r0, t2_r);
                 const auto s0_i = hn::Add(i0, t2_i);
@@ -383,8 +383,8 @@ namespace zlfft {
                     const auto t2_i = hn::MulAdd(i2, hn::Load(d, w2_r_base + k),
                                                  hn::Mul(r2, hn::Load(d, w2_i_base + k)));
 
-                    auto r0 = hn::Load(d, in_0_r + k);
-                    auto i0 = hn::Load(d, in_0_i + k);
+                    const auto r0 = hn::Load(d, in_0_r + k);
+                    const auto i0 = hn::Load(d, in_0_i + k);
 
                     const auto s0_r = hn::Add(r0, t2_r);
                     const auto s0_i = hn::Add(i0, t2_i);

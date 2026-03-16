@@ -21,6 +21,7 @@ algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4"
          "simd_stockham_radix4_soa_kernel4_opt1",
 
          "simd_low_order",
+         "simd_low_order_opt1",
 
          "fftw3", "kfr", "vdsp", "pffft"]
 

@@ -47,3 +47,7 @@ jobs:
       - name: simd_low_order Throughput Test
         shell: bash
         run: python -u benchmark/throughput.py 5 25 simd_low_order
+
+      - name: simd_low_order_opt1 Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 simd_low_order_opt1

@@ -90,7 +90,7 @@ namespace zlfft {
             }
 
             if (width < n) {
-                radix4_fused_aos(in_r, in_i, out_buffer.data(), n, width, w_r_ptr, w_i_ptr);
+                radix4_fused(in_r, in_i, out_buffer.data(), n, width, w_r_ptr, w_i_ptr);
             } else {
                 soa_to_aos(in_r, in_i, out_buffer.data(), n);
             }
@@ -103,41 +103,11 @@ namespace zlfft {
         hwy::AlignedFreeUniquePtr<F[]> twiddles_i_;
         hwy::AlignedFreeUniquePtr<F[]> workspace_;
 
-        static void aos_to_soa(const C* __restrict in, F* __restrict out_r, F* __restrict out_i, size_t n) {
-            const hn::ScalableTag<F> d;
-            const size_t lanes = hn::Lanes(d);
-            size_t i = 0;
-            for (; i + lanes <= n; i += lanes) {
-                hn::Vec<decltype(d)> r, im;
-                hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + i), r, im);
-                hn::Store(r, d, out_r + i);
-                hn::Store(im, d, out_i + i);
-            }
-            for (; i < n; ++i) {
-                out_r[i] = in[i].real();
-                out_i[i] = in[i].imag();
-            }
-        }
-
-        static void soa_to_aos(const F* __restrict in_r, const F* __restrict in_i, C* __restrict out, size_t n) {
-            const hn::ScalableTag<F> d;
-            const size_t lanes = hn::Lanes(d);
-            size_t i = 0;
-            for (; i + lanes <= n; i += lanes) {
-                auto r = hn::Load(d, in_r + i);
-                auto im = hn::Load(d, in_i + i);
-                hn::StoreInterleaved2(r, im, d, reinterpret_cast<F*>(out + i));
-            }
-            for (; i < n; ++i) {
-                out[i] = C(in_r[i], in_i[i]);
-            }
-        }
-
         static void kernel12_fused(const C* __restrict in,
                                    F* __restrict out_r, F* __restrict out_i, const size_t n) {
             const size_t quarter_n = n >> 2;
             const size_t half_n = n >> 1;
-            const size_t three_quarter_n = quarter_n * 3;
+            const size_t three_quarter_n = quarter_n + half_n;
 
             const hn::ScalableTag<F> d;
             const size_t lanes = hn::Lanes(d);
@@ -315,7 +285,7 @@ namespace zlfft {
             }
         }
 
-        static void radix4_fused_aos(const F* __restrict in_r, const F* __restrict in_i,
+        static void radix4_fused(const F* __restrict in_r, const F* __restrict in_i,
                                      C* __restrict out,
                                      const size_t n, const size_t width,
                                      const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
@@ -554,6 +524,20 @@ namespace zlfft {
                 out_i[out_idx + 6] = y02_i - v2_i;
                 out_r[out_idx + 7] = y03_r - v3_r;
                 out_i[out_idx + 7] = y03_i - v3_i;
+            }
+        }
+
+        static void soa_to_aos(const F* __restrict in_r, const F* __restrict in_i, C* __restrict out, size_t n) {
+            const hn::ScalableTag<F> d;
+            const size_t lanes = hn::Lanes(d);
+            size_t i = 0;
+            for (; i + lanes <= n; i += lanes) {
+                auto r = hn::Load(d, in_r + i);
+                auto im = hn::Load(d, in_i + i);
+                hn::StoreInterleaved2(r, im, d, reinterpret_cast<F*>(out + i));
+            }
+            for (; i < n; ++i) {
+                out[i] = C(in_r[i], in_i[i]);
             }
         }
     };

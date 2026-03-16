@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "simd_low_order.hpp"
 #include "../source/naive_stockham_radix2.hpp"
 #include "simd_stockham_radix2_kernel1.hpp"
 
@@ -79,6 +80,9 @@ using FFTClass = zlfft::SIMDStockhamRadix4SOAKernel4<F>;
 #elif defined(ENABLE_SIMD_STOCKHAM_RADIX4_SOA_KERNEL4_OPT1)
 #include "../source/simd_stockham_radix4_soa_kernel4_opt1.hpp"
 using FFTClass = zlfft::SIMDStockhamRadix4SOAKernel4OPT1<F>;
+#elif defined(ENABLE_SIMD_LOW_ORDER)
+#include "../source/simd_low_order.hpp"
+using FFTClass = zlfft::SIMDLowOrder<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

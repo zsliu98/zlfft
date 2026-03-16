@@ -184,7 +184,7 @@ endif ()
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     target_compile_options(zlfft_benchmark PRIVATE "-march=armv8-a+simd")
 else ()
-    target_compile_options(zlfft_benchmark PRIVATE "-mavx2")
+    target_compile_options(zlfft_benchmark PRIVATE "-mavx2" "-mfma")
 endif ()
 
 include(CheckIPOSupported)

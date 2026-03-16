@@ -11,10 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "simd_low_order.hpp"
 #include "../source/naive_stockham_radix2.hpp"
-#include "simd_stockham_radix2_kernel1.hpp"
-
 
 #ifdef USE_DOUBLE
 using F = double;

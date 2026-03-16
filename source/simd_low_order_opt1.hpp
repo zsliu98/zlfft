@@ -269,16 +269,21 @@ namespace zlfft {
             const size_t half_n = n >> 1;
             const size_t three_quarter_n = quarter_n * 3;
 
-            const hn::FixedTag<F, 4> d;
+            // Upgraded to ScalableTag. On AVX2, this will process 8 floats at once.
+            const hn::ScalableTag<F> d;
+            const size_t lanes = hn::Lanes(d);
 
-            const auto w1_r = hn::Load(d, w_r_ptr);
-            const auto w1_i = hn::Load(d, w_i_ptr);
-            const auto w2_r = hn::Load(d, w_r_ptr + 4);
-            const auto w2_i = hn::Load(d, w_i_ptr + 4);
-            const auto w3_r = hn::Load(d, w_r_ptr + 8);
-            const auto w3_i = hn::Load(d, w_i_ptr + 8);
+            // LoadDup128 loads 4 floats and duplicates them into both halves of a 256-bit register.
+            // This perfectly matches the repeating nature of width=4 twiddles!
+            const auto w1_r = hn::LoadDup128(d, w_r_ptr);
+            const auto w1_i = hn::LoadDup128(d, w_i_ptr);
+            const auto w2_r = hn::LoadDup128(d, w_r_ptr + 4);
+            const auto w2_i = hn::LoadDup128(d, w_i_ptr + 4);
+            const auto w3_r = hn::LoadDup128(d, w_r_ptr + 8);
+            const auto w3_i = hn::LoadDup128(d, w_i_ptr + 8);
 
-            for (size_t j = 0; j < quarter_n; j += 4) {
+            for (size_t j = 0; j < quarter_n; j += lanes) {
+                // Step 1: Process legs 1 and 3
                 const auto i1 = hn::Load(d, in_i + j + quarter_n);
                 const auto r1 = hn::Load(d, in_r + j + quarter_n);
                 const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
@@ -289,11 +294,13 @@ namespace zlfft {
                 const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
                 const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
 
+                // Combine to free up the r1, i1, r3, i3 registers
                 const auto s2_r = hn::Add(t1_r, t3_r);
                 const auto s2_i = hn::Add(t1_i, t3_i);
                 const auto s3_r = hn::Sub(t1_r, t3_r);
                 const auto s3_i = hn::Sub(t1_i, t3_i);
 
+                // Step 2: Process leg 2 and leg 0
                 const auto i2 = hn::Load(d, in_i + j + half_n);
                 const auto r2 = hn::Load(d, in_r + j + half_n);
                 const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
@@ -307,15 +314,16 @@ namespace zlfft {
                 const auto s1_r = hn::Sub(r0, t2_r);
                 const auto s1_i = hn::Sub(i0, t2_i);
 
+                // Step 3: Final accumulation and immediate store
                 hn::Store(hn::Add(s0_r, s2_r), d, out_r + (j << 2));
                 hn::Store(hn::Add(s0_i, s2_i), d, out_i + (j << 2));
-                hn::Store(hn::Sub(s0_r, s2_r), d, out_r + (j << 2) + 8);
-                hn::Store(hn::Sub(s0_i, s2_i), d, out_i + (j << 2) + 8);
+                hn::Store(hn::Sub(s0_r, s2_r), d, out_r + (j << 2) + (lanes << 1));
+                hn::Store(hn::Sub(s0_i, s2_i), d, out_i + (j << 2) + (lanes << 1));
 
-                hn::Store(hn::Add(s1_r, s3_i), d, out_r + (j << 2) + 4);
-                hn::Store(hn::Sub(s1_i, s3_r), d, out_i + (j << 2) + 4);
-                hn::Store(hn::Sub(s1_r, s3_i), d, out_r + (j << 2) + 12);
-                hn::Store(hn::Add(s1_i, s3_r), d, out_i + (j << 2) + 12);
+                hn::Store(hn::Add(s1_r, s3_i), d, out_r + (j << 2) + lanes);
+                hn::Store(hn::Sub(s1_i, s3_r), d, out_i + (j << 2) + lanes);
+                hn::Store(hn::Sub(s1_r, s3_i), d, out_r + (j << 2) + (lanes * 3));
+                hn::Store(hn::Add(s1_i, s3_r), d, out_i + (j << 2) + (lanes * 3));
             }
         }
 
@@ -334,99 +342,70 @@ namespace zlfft {
             const F* __restrict const w1_i_base = w_i_ptr;
             const F* __restrict const w2_r_base = w_r_ptr + width;
             const F* __restrict const w2_i_base = w_i_ptr + width;
-            const F* __restrict const w3_r_base = w_r_ptr + (width << 1);
-            const F* __restrict const w3_i_base = w_i_ptr + (width << 1);
+            const F* __restrict const w3_r_base = w_r_ptr + 2 * width;
+            const F* __restrict const w3_i_base = w_i_ptr + 2 * width;
 
-            for (size_t j = 0; j < quarter_n; j += (width << 1)) {
-                const size_t j_B = j + width;
+            for (size_t j = 0; j < quarter_n; j += width) {
+                const F* __restrict in_0_r = in_r + j;
+                const F* __restrict in_0_i = in_i + j;
+                const F* __restrict in_1_r = in_r + j + quarter_n;
+                const F* __restrict in_1_i = in_i + j + quarter_n;
+                const F* __restrict in_2_r = in_r + j + half_n;
+                const F* __restrict in_2_i = in_i + j + half_n;
+                const F* __restrict in_3_r = in_r + j + three_quarter_n;
+                const F* __restrict in_3_i = in_i + j + three_quarter_n;
+
+                F* __restrict out_0_r = out_r + (j << 2);
+                F* __restrict out_0_i = out_i + (j << 2);
+                F* __restrict out_1_r = out_0_r + width;
+                F* __restrict out_1_i = out_0_i + width;
+                F* __restrict out_2_r = out_1_r + width;
+                F* __restrict out_2_i = out_1_i + width;
+                F* __restrict out_3_r = out_2_r + width;
+                F* __restrict out_3_i = out_2_i + width;
 
                 for (size_t k = 0; k < width; k += lanes) {
-                    const auto w1_r = hn::Load(d, w1_r_base + k);
-                    const auto w1_i = hn::Load(d, w1_i_base + k);
-                    const auto w2_r = hn::Load(d, w2_r_base + k);
-                    const auto w2_i = hn::Load(d, w2_i_base + k);
-                    const auto w3_r = hn::Load(d, w3_r_base + k);
-                    const auto w3_i = hn::Load(d, w3_i_base + k);
+                    // Load and compute 1 and 3 together
+                    const auto i1 = hn::Load(d, in_1_i + k);
+                    const auto r1 = hn::Load(d, in_1_r + k);
+                    const auto t1_r = hn::NegMulAdd(i1, hn::Load(d, w1_i_base + k), hn::Mul(r1, hn::Load(d, w1_r_base + k)));
+                    const auto t1_i = hn::MulAdd(i1, hn::Load(d, w1_r_base + k), hn::Mul(r1, hn::Load(d, w1_i_base + k)));
 
-                    {
-                        const auto i1 = hn::Load(d, in_i + j + quarter_n + k);
-                        const auto r1 = hn::Load(d, in_r + j + quarter_n + k);
-                        const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
-                        const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
+                    const auto i3 = hn::Load(d, in_3_i + k);
+                    const auto r3 = hn::Load(d, in_3_r + k);
+                    const auto t3_r = hn::NegMulAdd(i3, hn::Load(d, w3_i_base + k), hn::Mul(r3, hn::Load(d, w3_r_base + k)));
+                    const auto t3_i = hn::MulAdd(i3, hn::Load(d, w3_r_base + k), hn::Mul(r3, hn::Load(d, w3_i_base + k)));
 
-                        const auto i3 = hn::Load(d, in_i + j + three_quarter_n + k);
-                        const auto r3 = hn::Load(d, in_r + j + three_quarter_n + k);
-                        const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
-                        const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
+                    // Collapse down to s2 and s3 to free up hardware registers
+                    const auto s2_r = hn::Add(t1_r, t3_r);
+                    const auto s2_i = hn::Add(t1_i, t3_i);
+                    const auto s3_r = hn::Sub(t1_r, t3_r);
+                    const auto s3_i = hn::Sub(t1_i, t3_i);
 
-                        const auto s2_r = hn::Add(t1_r, t3_r);
-                        const auto s2_i = hn::Add(t1_i, t3_i);
-                        const auto s3_r = hn::Sub(t1_r, t3_r);
-                        const auto s3_i = hn::Sub(t1_i, t3_i);
+                    // Load and compute 0 and 2
+                    const auto i2 = hn::Load(d, in_2_i + k);
+                    const auto r2 = hn::Load(d, in_2_r + k);
+                    const auto t2_r = hn::NegMulAdd(i2, hn::Load(d, w2_i_base + k), hn::Mul(r2, hn::Load(d, w2_r_base + k)));
+                    const auto t2_i = hn::MulAdd(i2, hn::Load(d, w2_r_base + k), hn::Mul(r2, hn::Load(d, w2_i_base + k)));
 
-                        const auto i2 = hn::Load(d, in_i + j + half_n + k);
-                        const auto r2 = hn::Load(d, in_r + j + half_n + k);
-                        const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
-                        const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
+                    const auto r0 = hn::Load(d, in_0_r + k);
+                    const auto i0 = hn::Load(d, in_0_i + k);
 
-                        auto r0 = hn::Load(d, in_r + j + k);
-                        auto i0 = hn::Load(d, in_i + j + k);
+                    const auto s0_r = hn::Add(r0, t2_r);
+                    const auto s0_i = hn::Add(i0, t2_i);
+                    const auto s1_r = hn::Sub(r0, t2_r);
+                    const auto s1_i = hn::Sub(i0, t2_i);
 
-                        const auto s0_r = hn::Add(r0, t2_r);
-                        const auto s0_i = hn::Add(i0, t2_i);
-                        const auto s1_r = hn::Sub(r0, t2_r);
-                        const auto s1_i = hn::Sub(i0, t2_i);
+                    // Final dispatch
+                    hn::Store(hn::Add(s0_r, s2_r), d, out_0_r + k);
+                    hn::Store(hn::Add(s0_i, s2_i), d, out_0_i + k);
+                    hn::Store(hn::Sub(s0_r, s2_r), d, out_2_r + k);
+                    hn::Store(hn::Sub(s0_i, s2_i), d, out_2_i + k);
 
-                        hn::Store(hn::Add(s0_r, s2_r), d, out_r + (j << 2) + k);
-                        hn::Store(hn::Add(s0_i, s2_i), d, out_i + (j << 2) + k);
-                        hn::Store(hn::Sub(s0_r, s2_r), d, out_r + (j << 2) + (width << 1) + k);
-                        hn::Store(hn::Sub(s0_i, s2_i), d, out_i + (j << 2) + (width << 1) + k);
-
-                        hn::Store(hn::Add(s1_r, s3_i), d, out_r + (j << 2) + width + k);
-                        hn::Store(hn::Sub(s1_i, s3_r), d, out_i + (j << 2) + width + k);
-                        hn::Store(hn::Sub(s1_r, s3_i), d, out_r + (j << 2) + width * 3 + k);
-                        hn::Store(hn::Add(s1_i, s3_r), d, out_i + (j << 2) + width * 3 + k);
-                    }
-
-                    {
-                        const auto i1 = hn::Load(d, in_i + j_B + quarter_n + k);
-                        const auto r1 = hn::Load(d, in_r + j_B + quarter_n + k);
-                        const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
-                        const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
-
-                        const auto i3 = hn::Load(d, in_i + j_B + three_quarter_n + k);
-                        const auto r3 = hn::Load(d, in_r + j_B + three_quarter_n + k);
-                        const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
-                        const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
-
-                        const auto s2_r = hn::Add(t1_r, t3_r);
-                        const auto s2_i = hn::Add(t1_i, t3_i);
-                        const auto s3_r = hn::Sub(t1_r, t3_r);
-                        const auto s3_i = hn::Sub(t1_i, t3_i);
-
-                        const auto i2 = hn::Load(d, in_i + j_B + half_n + k);
-                        const auto r2 = hn::Load(d, in_r + j_B + half_n + k);
-                        const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
-                        const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
-
-                        auto r0 = hn::Load(d, in_r + j_B + k);
-                        auto i0 = hn::Load(d, in_i + j_B + k);
-
-                        const auto s0_r = hn::Add(r0, t2_r);
-                        const auto s0_i = hn::Add(i0, t2_i);
-                        const auto s1_r = hn::Sub(r0, t2_r);
-                        const auto s1_i = hn::Sub(i0, t2_i);
-
-                        hn::Store(hn::Add(s0_r, s2_r), d, out_r + (j_B << 2) + k);
-                        hn::Store(hn::Add(s0_i, s2_i), d, out_i + (j_B << 2) + k);
-                        hn::Store(hn::Sub(s0_r, s2_r), d, out_r + (j_B << 2) + (width << 1) + k);
-                        hn::Store(hn::Sub(s0_i, s2_i), d, out_i + (j_B << 2) + (width << 1) + k);
-
-                        hn::Store(hn::Add(s1_r, s3_i), d, out_r + (j_B << 2) + width + k);
-                        hn::Store(hn::Sub(s1_i, s3_r), d, out_i + (j_B << 2) + width + k);
-                        hn::Store(hn::Sub(s1_r, s3_i), d, out_r + (j_B << 2) + width * 3 + k);
-                        hn::Store(hn::Add(s1_i, s3_r), d, out_i + (j_B << 2) + width * 3 + k);
-                    }
+                    hn::Store(hn::Add(s1_r, s3_i), d, out_1_r + k);
+                    hn::Store(hn::Sub(s1_i, s3_r), d, out_1_i + k);
+                    hn::Store(hn::Sub(s1_r, s3_i), d, out_3_r + k);
+                    hn::Store(hn::Add(s1_i, s3_r), d, out_3_i + k);
                 }
             }
         }

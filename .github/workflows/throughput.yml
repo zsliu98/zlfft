@@ -41,6 +41,10 @@ jobs:
         shell: bash
         run: python -u benchmark/throughput.py 5 25 fftw3
 
+      - name: FFTW3 Estimate Throughput Test
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 fftw3_estimate
+
       - name: pffft Throughput Test
         if: ${{ runner.os != 'Windows' }}
         shell: bash

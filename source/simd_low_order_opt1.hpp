@@ -187,70 +187,70 @@ namespace zlfft {
 
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j), temp_a_r, temp_a_i);
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + (m << 2)), temp_b_r, temp_b_i);
-                auto t0_r = hn::Add(temp_a_r, temp_b_r), t0_i = hn::Add(temp_a_i, temp_b_i);
-                auto t1_r = hn::Sub(temp_a_r, temp_b_r), t1_i = hn::Sub(temp_a_i, temp_b_i);
+                const auto t0_r = hn::Add(temp_a_r, temp_b_r), t0_i = hn::Add(temp_a_i, temp_b_i);
+                const auto t1_r = hn::Sub(temp_a_r, temp_b_r), t1_i = hn::Sub(temp_a_i, temp_b_i);
 
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + (m << 1)), temp_a_r, temp_a_i);
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + m * 6), temp_b_r, temp_b_i);
-                auto t2_r = hn::Add(temp_a_r, temp_b_r), t2_i = hn::Add(temp_a_i, temp_b_i);
-                auto t3_r = hn::Sub(temp_a_r, temp_b_r), t3_i = hn::Sub(temp_a_i, temp_b_i);
+                const auto t2_r = hn::Add(temp_a_r, temp_b_r), t2_i = hn::Add(temp_a_i, temp_b_i);
+                const auto t3_r = hn::Sub(temp_a_r, temp_b_r), t3_i = hn::Sub(temp_a_i, temp_b_i);
 
-                auto y00_r = hn::Add(t0_r, t2_r), y00_i = hn::Add(t0_i, t2_i);
-                auto y01_r = hn::Add(t1_r, t3_i), y01_i = hn::Sub(t1_i, t3_r);
-                auto y02_r = hn::Sub(t0_r, t2_r), y02_i = hn::Sub(t0_i, t2_i);
-                auto y03_r = hn::Sub(t1_r, t3_i), y03_i = hn::Add(t1_i, t3_r);
+                const auto y00_r = hn::Add(t0_r, t2_r), y00_i = hn::Add(t0_i, t2_i);
+                const auto y01_r = hn::Add(t1_r, t3_i), y01_i = hn::Sub(t1_i, t3_r);
+                const auto y02_r = hn::Sub(t0_r, t2_r), y02_i = hn::Sub(t0_i, t2_i);
+                const auto y03_r = hn::Sub(t1_r, t3_i), y03_i = hn::Add(t1_i, t3_r);
 
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + m), temp_a_r, temp_a_i);
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + 5 * m), temp_b_r, temp_b_i);
-                auto u0_r = hn::Add(temp_a_r, temp_b_r), u0_i = hn::Add(temp_a_i, temp_b_i);
-                auto u1_r = hn::Sub(temp_a_r, temp_b_r), u1_i = hn::Sub(temp_a_i, temp_b_i);
+                const auto u0_r = hn::Add(temp_a_r, temp_b_r), u0_i = hn::Add(temp_a_i, temp_b_i);
+                const auto u1_r = hn::Sub(temp_a_r, temp_b_r), u1_i = hn::Sub(temp_a_i, temp_b_i);
 
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + 3 * m), temp_a_r, temp_a_i);
                 hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + 7 * m), temp_b_r, temp_b_i);
-                auto u2_r = hn::Add(temp_a_r, temp_b_r), u2_i = hn::Add(temp_a_i, temp_b_i);
-                auto u3_r = hn::Sub(temp_a_r, temp_b_r), u3_i = hn::Sub(temp_a_i, temp_b_i);
+                const auto u2_r = hn::Add(temp_a_r, temp_b_r), u2_i = hn::Add(temp_a_i, temp_b_i);
+                const auto u3_r = hn::Sub(temp_a_r, temp_b_r), u3_i = hn::Sub(temp_a_i, temp_b_i);
 
-                auto y10_r = hn::Add(u0_r, u2_r), y10_i = hn::Add(u0_i, u2_i);
-                auto y11_r = hn::Add(u1_r, u3_i), y11_i = hn::Sub(u1_i, u3_r);
-                auto y12_r = hn::Sub(u0_r, u2_r), y12_i = hn::Sub(u0_i, u2_i);
-                auto y13_r = hn::Sub(u1_r, u3_i), y13_i = hn::Add(u1_i, u3_r);
+                const auto y10_r = hn::Add(u0_r, u2_r), y10_i = hn::Add(u0_i, u2_i);
+                const auto y11_r = hn::Add(u1_r, u3_i), y11_i = hn::Sub(u1_i, u3_r);
+                const auto y12_r = hn::Sub(u0_r, u2_r), y12_i = hn::Sub(u0_i, u2_i);
+                const auto y13_r = hn::Sub(u1_r, u3_i), y13_i = hn::Add(u1_i, u3_r);
 
-                auto v0_r = y10_r, v0_i = y10_i;
-                auto v1_r = hn::Mul(hn::Add(y11_r, y11_i), inv_sqrt2);
-                auto v1_i = hn::Mul(hn::Sub(y11_i, y11_r), inv_sqrt2);
-                auto v2_r = y12_i, v2_i = hn::Neg(y12_r);
-                auto v3_r = hn::Mul(hn::Sub(y13_i, y13_r), inv_sqrt2);
-                auto v3_i = hn::Mul(hn::Neg(hn::Add(y13_r, y13_i)), inv_sqrt2);
+                const auto v0_r = y10_r, v0_i = y10_i;
+                const auto v1_r = hn::Mul(hn::Add(y11_r, y11_i), inv_sqrt2);
+                const auto v1_i = hn::Mul(hn::Sub(y11_i, y11_r), inv_sqrt2);
+                const auto v2_r = y12_i, v2_i = hn::Neg(y12_r);
+                const auto v3_r = hn::Mul(hn::Sub(y13_i, y13_r), inv_sqrt2);
+                const auto v3_i = hn::Mul(hn::Neg(hn::Add(y13_r, y13_i)), inv_sqrt2);
 
-                auto z00_r = hn::Add(y00_r, v0_r), z00_i = hn::Add(y00_i, v0_i);
-                auto z01_r = hn::Add(y01_r, v1_r), z01_i = hn::Add(y01_i, v1_i);
-                auto z02_r = hn::Add(y02_r, v2_r), z02_i = hn::Add(y02_i, v2_i);
-                auto z03_r = hn::Add(y03_r, v3_r), z03_i = hn::Add(y03_i, v3_i);
+                const auto z00_r = hn::Add(y00_r, v0_r), z00_i = hn::Add(y00_i, v0_i);
+                const auto z01_r = hn::Add(y01_r, v1_r), z01_i = hn::Add(y01_i, v1_i);
+                const auto z02_r = hn::Add(y02_r, v2_r), z02_i = hn::Add(y02_i, v2_i);
+                const auto z03_r = hn::Add(y03_r, v3_r), z03_i = hn::Add(y03_i, v3_i);
 
-                auto z10_r = hn::Sub(y00_r, v0_r), z10_i = hn::Sub(y00_i, v0_i);
-                auto z11_r = hn::Sub(y01_r, v1_r), z11_i = hn::Sub(y01_i, v1_i);
-                auto z12_r = hn::Sub(y02_r, v2_r), z12_i = hn::Sub(y02_i, v2_i);
-                auto z13_r = hn::Sub(y03_r, v3_r), z13_i = hn::Sub(y03_i, v3_i);
+                const auto z10_r = hn::Sub(y00_r, v0_r), z10_i = hn::Sub(y00_i, v0_i);
+                const auto z11_r = hn::Sub(y01_r, v1_r), z11_i = hn::Sub(y01_i, v1_i);
+                const auto z12_r = hn::Sub(y02_r, v2_r), z12_i = hn::Sub(y02_i, v2_i);
+                const auto z13_r = hn::Sub(y03_r, v3_r), z13_i = hn::Sub(y03_i, v3_i);
 
-                auto lower_r0 = hn::InterleaveLower(d, z00_r, z10_r);
-                auto lower_r1 = hn::InterleaveLower(d, z01_r, z11_r);
-                auto lower_r2 = hn::InterleaveLower(d, z02_r, z12_r);
-                auto lower_r3 = hn::InterleaveLower(d, z03_r, z13_r);
+                const auto lower_r0 = hn::InterleaveLower(d, z00_r, z10_r);
+                const auto lower_r1 = hn::InterleaveLower(d, z01_r, z11_r);
+                const auto lower_r2 = hn::InterleaveLower(d, z02_r, z12_r);
+                const auto lower_r3 = hn::InterleaveLower(d, z03_r, z13_r);
 
-                auto upper_r0 = hn::InterleaveUpper(d, z00_r, z10_r);
-                auto upper_r1 = hn::InterleaveUpper(d, z01_r, z11_r);
-                auto upper_r2 = hn::InterleaveUpper(d, z02_r, z12_r);
-                auto upper_r3 = hn::InterleaveUpper(d, z03_r, z13_r);
+                const auto upper_r0 = hn::InterleaveUpper(d, z00_r, z10_r);
+                const auto upper_r1 = hn::InterleaveUpper(d, z01_r, z11_r);
+                const auto upper_r2 = hn::InterleaveUpper(d, z02_r, z12_r);
+                const auto upper_r3 = hn::InterleaveUpper(d, z03_r, z13_r);
 
-                auto lower_i0 = hn::InterleaveLower(d, z00_i, z10_i);
-                auto lower_i1 = hn::InterleaveLower(d, z01_i, z11_i);
-                auto lower_i2 = hn::InterleaveLower(d, z02_i, z12_i);
-                auto lower_i3 = hn::InterleaveLower(d, z03_i, z13_i);
+                const auto lower_i0 = hn::InterleaveLower(d, z00_i, z10_i);
+                const auto lower_i1 = hn::InterleaveLower(d, z01_i, z11_i);
+                const auto lower_i2 = hn::InterleaveLower(d, z02_i, z12_i);
+                const auto lower_i3 = hn::InterleaveLower(d, z03_i, z13_i);
 
-                auto upper_i0 = hn::InterleaveUpper(d, z00_i, z10_i);
-                auto upper_i1 = hn::InterleaveUpper(d, z01_i, z11_i);
-                auto upper_i2 = hn::InterleaveUpper(d, z02_i, z12_i);
-                auto upper_i3 = hn::InterleaveUpper(d, z03_i, z13_i);
+                const auto upper_i0 = hn::InterleaveUpper(d, z00_i, z10_i);
+                const auto upper_i1 = hn::InterleaveUpper(d, z01_i, z11_i);
+                const auto upper_i2 = hn::InterleaveUpper(d, z02_i, z12_i);
+                const auto upper_i3 = hn::InterleaveUpper(d, z03_i, z13_i);
 
                 const size_t out_offset = j << 3;
                 hn::StoreInterleaved4(lower_r0, lower_r1, lower_r2, lower_r3, d, out_r + out_offset);
@@ -397,72 +397,55 @@ namespace zlfft {
             const hn::ScalableTag<F> d;
             const size_t lanes = hn::Lanes(d);
 
-            const F* __restrict const w1_r_base = w_r_ptr;
-            const F* __restrict const w1_i_base = w_i_ptr;
-            const F* __restrict const w2_r_base = w_r_ptr + width;
-            const F* __restrict const w2_i_base = w_i_ptr + width;
-            const F* __restrict const w3_r_base = w_r_ptr + (width << 1);
-            const F* __restrict const w3_i_base = w_i_ptr + (width << 1);
+            const size_t mask = width - 1;
 
-            for (size_t j = 0; j < quarter_n; j += width) {
-                const F* __restrict in_0_r = in_r + j;
-                const F* __restrict in_0_i = in_i + j;
-                const F* __restrict in_1_r = in_r + j + quarter_n;
-                const F* __restrict in_1_i = in_i + j + quarter_n;
-                const F* __restrict in_2_r = in_r + j + half_n;
-                const F* __restrict in_2_i = in_i + j + half_n;
-                const F* __restrict in_3_r = in_r + j + three_quarter_n;
-                const F* __restrict in_3_i = in_i + j + three_quarter_n;
+            for (size_t i = 0; i < quarter_n; i += lanes) {
+                const auto r0 = hn::LoadU(d, in_r + i);
+                const auto i0 = hn::LoadU(d, in_i + i);
+                const auto r1 = hn::LoadU(d, in_r + quarter_n + i);
+                const auto i1 = hn::LoadU(d, in_i + quarter_n + i);
+                const auto r2 = hn::LoadU(d, in_r + half_n + i);
+                const auto i2 = hn::LoadU(d, in_i + half_n + i);
+                const auto r3 = hn::LoadU(d, in_r + three_quarter_n + i);
+                const auto i3 = hn::LoadU(d, in_i + three_quarter_n + i);
 
-                C* __restrict out_0 = out + (j << 2);
-                C* __restrict out_1 = out_0 + width;
-                C* __restrict out_2 = out_1 + width;
-                C* __restrict out_3 = out_2 + width;
+                const size_t k = i & mask;
+                const auto w1_r = hn::LoadU(d, w_r_ptr + k);
+                const auto w1_i = hn::LoadU(d, w_i_ptr + k);
+                const auto w2_r = hn::LoadU(d, w_r_ptr + width + k);
+                const auto w2_i = hn::LoadU(d, w_i_ptr + width + k);
+                const auto w3_r = hn::LoadU(d, w_r_ptr + (width << 1) + k);
+                const auto w3_i = hn::LoadU(d, w_i_ptr + (width << 1) + k);
 
-                for (size_t k = 0; k < width; k += lanes) {
-                    const auto i1 = hn::LoadU(d, in_1_i + k);
-                    const auto r1 = hn::LoadU(d, in_1_r + k);
-                    const auto t1_r = hn::NegMulAdd(i1, hn::LoadU(d, w1_i_base + k),
-                                                    hn::Mul(r1, hn::LoadU(d, w1_r_base + k)));
-                    const auto t1_i = hn::MulAdd(i1, hn::LoadU(d, w1_r_base + k),
-                                                 hn::Mul(r1, hn::LoadU(d, w1_i_base + k)));
+                const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
+                const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
+                const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
+                const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
 
-                    const auto i3 = hn::LoadU(d, in_3_i + k);
-                    const auto r3 = hn::LoadU(d, in_3_r + k);
-                    const auto t3_r = hn::NegMulAdd(i3, hn::LoadU(d, w3_i_base + k),
-                                                    hn::Mul(r3, hn::LoadU(d, w3_r_base + k)));
-                    const auto t3_i = hn::MulAdd(i3, hn::LoadU(d, w3_r_base + k),
-                                                 hn::Mul(r3, hn::LoadU(d, w3_i_base + k)));
+                const auto s2_r = hn::Add(t1_r, t3_r);
+                const auto s2_i = hn::Add(t1_i, t3_i);
+                const auto s3_r = hn::Sub(t1_r, t3_r);
+                const auto s3_i = hn::Sub(t1_i, t3_i);
 
-                    const auto s2_r = hn::Add(t1_r, t3_r);
-                    const auto s2_i = hn::Add(t1_i, t3_i);
-                    const auto s3_r = hn::Sub(t1_r, t3_r);
-                    const auto s3_i = hn::Sub(t1_i, t3_i);
+                const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
+                const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
 
-                    const auto i2 = hn::LoadU(d, in_2_i + k);
-                    const auto r2 = hn::LoadU(d, in_2_r + k);
-                    const auto t2_r = hn::NegMulAdd(i2, hn::LoadU(d, w2_i_base + k),
-                                                    hn::Mul(r2, hn::LoadU(d, w2_r_base + k)));
-                    const auto t2_i = hn::MulAdd(i2, hn::LoadU(d, w2_r_base + k),
-                                                 hn::Mul(r2, hn::LoadU(d, w2_i_base + k)));
+                const auto s0_r = hn::Add(r0, t2_r);
+                const auto s0_i = hn::Add(i0, t2_i);
+                const auto s1_r = hn::Sub(r0, t2_r);
+                const auto s1_i = hn::Sub(i0, t2_i);
 
-                    auto r0 = hn::LoadU(d, in_0_r + k);
-                    auto i0 = hn::LoadU(d, in_0_i + k);
+                const size_t j_times_4 = (i & ~mask) << 2;
+                const size_t out_idx = j_times_4 + k;
 
-                    const auto s0_r = hn::Add(r0, t2_r);
-                    const auto s0_i = hn::Add(i0, t2_i);
-                    const auto s1_r = hn::Sub(r0, t2_r);
-                    const auto s1_i = hn::Sub(i0, t2_i);
-
-                    hn::StoreInterleaved2(hn::Add(s0_r, s2_r), hn::Add(s0_i, s2_i), d,
-                                          reinterpret_cast<F*>(out_0 + k));
-                    hn::StoreInterleaved2(hn::Add(s1_r, s3_i), hn::Sub(s1_i, s3_r), d,
-                                          reinterpret_cast<F*>(out_1 + k));
-                    hn::StoreInterleaved2(hn::Sub(s0_r, s2_r), hn::Sub(s0_i, s2_i), d,
-                                          reinterpret_cast<F*>(out_2 + k));
-                    hn::StoreInterleaved2(hn::Sub(s1_r, s3_i), hn::Add(s1_i, s3_r), d,
-                                          reinterpret_cast<F*>(out_3 + k));
-                }
+                hn::StoreInterleaved2(hn::Add(s0_r, s2_r), hn::Add(s0_i, s2_i), d,
+                                      reinterpret_cast<F*>(out + out_idx));
+                hn::StoreInterleaved2(hn::Add(s1_r, s3_i), hn::Sub(s1_i, s3_r), d,
+                                      reinterpret_cast<F*>(out + out_idx + width));
+                hn::StoreInterleaved2(hn::Sub(s0_r, s2_r), hn::Sub(s0_i, s2_i), d,
+                                      reinterpret_cast<F*>(out + out_idx + (width << 1)));
+                hn::StoreInterleaved2(hn::Sub(s1_r, s3_i), hn::Add(s1_i, s3_r), d,
+                                      reinterpret_cast<F*>(out + out_idx + width * 3));
             }
         }
 

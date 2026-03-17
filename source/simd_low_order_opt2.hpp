@@ -15,12 +15,13 @@ namespace zlfft {
     namespace hn = hwy::HWY_NAMESPACE;
 
     template <typename F>
-    class SIMDLowOrderOPT1 {
+    class SIMDLowOrderOPT2 {
         using C = std::complex<F>;
 
     private:
         enum StageType {
             kRadix8FirstPass,
+            kRadix8,
             kRadix4FirstPass,
             kRadix4Width4,
             kRadix4,
@@ -30,7 +31,7 @@ namespace zlfft {
         std::vector<StageType> stages_;
 
     public:
-        explicit SIMDLowOrderOPT1(const size_t order) :
+        explicit SIMDLowOrderOPT2(const size_t order) :
             order_(order) {
             if (order < 4) {
                 return;
@@ -42,18 +43,23 @@ namespace zlfft {
             } else if (order == 6) {
                 stages_ = {kRadix4FirstPass, kRadix4Width4, kRadix4LastPass};
             } else {
-                const auto mod_result = order % 2;
+                const auto mod_result = order % 3;
+                stages_.emplace_back(kRadix8FirstPass);
                 if (mod_result == 1) {
-                    stages_.emplace_back(kRadix8FirstPass);
-                    for (size_t i = 3; i < order - 2; i += 2) {
-                        stages_.emplace_back(kRadix4);
+                    for (size_t i = 3; i < order - 4; i += 3) {
+                        stages_.emplace_back(kRadix8);
+                    }
+                    stages_.emplace_back(kRadix4);
+                } else if (mod_result == 2) {
+                    for (size_t i = 3; i < order - 2; i += 3) {
+                        stages_.emplace_back(kRadix8);
                     }
                 } else {
-                    stages_.emplace_back(kRadix4FirstPass);
-                    stages_.emplace_back(kRadix4Width4);
-                    for (size_t i = 4; i < order - 2; i += 2) {
-                        stages_.emplace_back(kRadix4);
+                    for (size_t i = 3; i < order - 6; i += 3) {
+                        stages_.emplace_back(kRadix8);
                     }
+                    stages_.emplace_back(kRadix4);
+                    stages_.emplace_back(kRadix4);
                 }
                 stages_.emplace_back(kRadix4LastPass);
             }
@@ -62,8 +68,20 @@ namespace zlfft {
             {
                 size_t width = (stages_[0] == kRadix4FirstPass) ? 4 : 8;
                 for (const auto stage : stages_) {
-                    num_twiddles += 3 * width;
-                    width = width << 2;
+                    switch (stage) {
+                    case kRadix4Width4:
+                    case kRadix4:
+                    case kRadix4LastPass: {
+                        num_twiddles += 3 * width;
+                        width = width << 2;
+                        break;
+                    }
+                    case kRadix8: {
+                        num_twiddles += 7 * width;
+                        width = width << 3;
+                        break;
+                    }
+                    }
                 }
             }
 
@@ -74,16 +92,36 @@ namespace zlfft {
                 size_t offset = 0;
                 size_t width = (stages_[0] == kRadix4FirstPass) ? 4 : 8;
                 for (const auto stage : stages_) {
-                    const double angle_step = -2.0 * std::numbers::pi / static_cast<double>(width << 2);
-                    for (int mul = 1; mul < 4; ++mul) {
-                        const auto step = angle_step * static_cast<double>(mul);
-                        for (size_t k = 0; k < width; ++k, ++offset) {
-                            const double angle = static_cast<double>(k) * step;
-                            twiddles_r_[offset] = static_cast<F>(std::cos(angle));
-                            twiddles_i_[offset] = static_cast<F>(std::sin(angle));
+                    switch (stage) {
+                    case kRadix4Width4:
+                    case kRadix4:
+                    case kRadix4LastPass: {
+                        const double angle_step = -2.0 * std::numbers::pi / static_cast<double>(width << 2);
+                        for (int mul = 1; mul < 4; ++mul) {
+                            const auto step = angle_step * static_cast<double>(mul);
+                            for (size_t k = 0; k < width; ++k, ++offset) {
+                                const double angle = static_cast<double>(k) * step;
+                                twiddles_r_[offset] = static_cast<F>(std::cos(angle));
+                                twiddles_i_[offset] = static_cast<F>(std::sin(angle));
+                            }
                         }
+                        width = width << 2;
+                        break;
                     }
-                    width = width << 2;
+                    case kRadix8: {
+                        const double angle_step = -2.0 * std::numbers::pi / static_cast<double>(width << 3);
+                        for (int mul = 1; mul < 8; ++mul) {
+                            const auto step = angle_step * static_cast<double>(mul);
+                            for (size_t k = 0; k < width; ++k, ++offset) {
+                                const double angle = static_cast<double>(k) * step;
+                                twiddles_r_[offset] = static_cast<F>(std::cos(angle));
+                                twiddles_i_[offset] = static_cast<F>(std::sin(angle));
+                            }
+                        }
+                        width = width << 3;
+                        break;
+                    }
+                    }
                 }
             }
 
@@ -153,6 +191,13 @@ namespace zlfft {
                     w_r_ptr += 3 * width;
                     w_i_ptr += 3 * width;
                     width = width << 2;
+                    break;
+                }
+                case kRadix8: {
+                    radix8(in_r, in_i, out_r, out_i, n, width, w_r_ptr, w_i_ptr);
+                    w_r_ptr += 7 * width;
+                    w_i_ptr += 7 * width;
+                    width = width << 3;
                     break;
                 }
                 }
@@ -426,6 +471,97 @@ namespace zlfft {
 
                 hn::StoreU(hn::Sub(s1_r, s3_i), d, out_r + out_idx + width * 3);
                 hn::StoreU(hn::Add(s1_i, s3_r), d, out_i + out_idx + width * 3);
+            }
+        }
+
+        static void radix8(const F* __restrict in_r, const F* __restrict in_i,
+                           F* __restrict out_r, F* __restrict out_i,
+                           const size_t n, const size_t width,
+                           const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+            const size_t eighth_n = n >> 3;
+            const hn::ScalableTag<F> d;
+            const size_t lanes = hn::Lanes(d);
+            const size_t mask = width - 1;
+
+            static constexpr F kInvSqrt2 = static_cast<F>(1.0 / std::numbers::sqrt2);
+            const auto inv_sqrt2 = hn::Set(d, kInvSqrt2);
+
+            for (size_t i = 0; i < eighth_n; i += lanes) {
+                const size_t k = i & mask;
+                const size_t j_times_8 = (i & ~mask) << 3;
+                const size_t out_idx = j_times_8 + k;
+
+                auto load_twiddle_mul = [&](size_t in_offset, size_t w_mult, auto& r_out, auto& i_out) {
+                    const auto r_in = hn::LoadU(d, in_r + in_offset + i);
+                    const auto i_in = hn::LoadU(d, in_i + in_offset + i);
+                    const auto w_r = hn::LoadU(d, w_r_ptr + (w_mult * width) + k);
+                    const auto w_i = hn::LoadU(d, w_i_ptr + (w_mult * width) + k);
+                    r_out = hn::NegMulAdd(i_in, w_i, hn::Mul(r_in, w_r));
+                    i_out = hn::MulAdd(i_in, w_r, hn::Mul(r_in, w_i));
+                };
+
+                const auto r0 = hn::LoadU(d, in_r + i);
+                const auto i0 = hn::LoadU(d, in_i + i);
+
+                hn::Vec<decltype(d)> r4, i4;
+                load_twiddle_mul(eighth_n * 4, 3, r4, i4);
+                const auto t0_r = hn::Add(r0, r4), t0_i = hn::Add(i0, i4);
+                const auto t1_r = hn::Sub(r0, r4), t1_i = hn::Sub(i0, i4);
+
+                hn::Vec<decltype(d)> r2, i2, r6, i6;
+                load_twiddle_mul(eighth_n * 2, 1, r2, i2);
+                load_twiddle_mul(eighth_n * 6, 5, r6, i6);
+                const auto t2_r = hn::Add(r2, r6), t2_i = hn::Add(i2, i6);
+                const auto t3_r = hn::Sub(r2, r6), t3_i = hn::Sub(i2, i6);
+
+                hn::Vec<decltype(d)> r1, i1, r5, i5;
+                load_twiddle_mul(eighth_n * 1, 0, r1, i1);
+                load_twiddle_mul(eighth_n * 5, 4, r5, i5);
+                const auto u0_r = hn::Add(r1, r5), u0_i = hn::Add(i1, i5);
+                const auto u1_r = hn::Sub(r1, r5), u1_i = hn::Sub(i1, i5);
+
+                hn::Vec<decltype(d)> r3, i3, r7, i7;
+                load_twiddle_mul(eighth_n * 3, 2, r3, i3);
+                load_twiddle_mul(eighth_n * 7, 6, r7, i7);
+                const auto u2_r = hn::Add(r3, r7), u2_i = hn::Add(i3, i7);
+                const auto u3_r = hn::Sub(r3, r7), u3_i = hn::Sub(i3, i7);
+
+                const auto y00_r = hn::Add(t0_r, t2_r), y00_i = hn::Add(t0_i, t2_i);
+                const auto y02_r = hn::Sub(t0_r, t2_r), y02_i = hn::Sub(t0_i, t2_i);
+                const auto y01_r = hn::Add(t1_r, t3_i), y01_i = hn::Sub(t1_i, t3_r);
+                const auto y03_r = hn::Sub(t1_r, t3_i), y03_i = hn::Add(t1_i, t3_r);
+
+                const auto y10_r = hn::Add(u0_r, u2_r), y10_i = hn::Add(u0_i, u2_i);
+                const auto y12_r = hn::Sub(u0_r, u2_r), y12_i = hn::Sub(u0_i, u2_i);
+                const auto y11_r = hn::Add(u1_r, u3_i), y11_i = hn::Sub(u1_i, u3_r);
+                const auto y13_r = hn::Sub(u1_r, u3_i), y13_i = hn::Add(u1_i, u3_r);
+
+                const auto v0_r = y10_r, v0_i = y10_i;
+                const auto v1_r = hn::Mul(hn::Add(y11_r, y11_i), inv_sqrt2);
+                const auto v1_i = hn::Mul(hn::Sub(y11_i, y11_r), inv_sqrt2);
+                const auto v2_r = y12_i, v2_i = hn::Neg(y12_r);
+                const auto v3_r = hn::Mul(hn::Sub(y13_i, y13_r), inv_sqrt2);
+                const auto v3_i = hn::Mul(hn::Neg(hn::Add(y13_r, y13_i)), inv_sqrt2);
+
+                hn::StoreU(hn::Add(y00_r, v0_r), d, out_r + out_idx);
+                hn::StoreU(hn::Add(y00_i, v0_i), d, out_i + out_idx);
+                hn::StoreU(hn::Sub(y00_r, v0_r), d, out_r + out_idx + (width << 2));
+                hn::StoreU(hn::Sub(y00_i, v0_i), d, out_i + out_idx + (width << 2));
+
+                hn::StoreU(hn::Add(y01_r, v1_r), d, out_r + out_idx + width);
+                hn::StoreU(hn::Add(y01_i, v1_i), d, out_i + out_idx + width);
+                hn::StoreU(hn::Sub(y01_r, v1_r), d, out_r + out_idx + width * 5);
+                hn::StoreU(hn::Sub(y01_i, v1_i), d, out_i + out_idx + width * 5);
+
+                hn::StoreU(hn::Add(y02_r, v2_r), d, out_r + out_idx + (width << 1));
+                hn::StoreU(hn::Add(y02_i, v2_i), d, out_i + out_idx + (width << 1));
+                hn::StoreU(hn::Sub(y02_r, v2_r), d, out_r + out_idx + width * 6);
+                hn::StoreU(hn::Sub(y02_i, v2_i), d, out_i + out_idx + width * 6);
+
+                hn::StoreU(hn::Add(y03_r, v3_r), d, out_r + out_idx + width * 3);
+                hn::StoreU(hn::Add(y03_i, v3_i), d, out_i + out_idx + width * 3);
+                hn::StoreU(hn::Sub(y03_r, v3_r), d, out_r + out_idx + width * 7);
+                hn::StoreU(hn::Sub(y03_i, v3_i), d, out_i + out_idx + width * 7);
             }
         }
 

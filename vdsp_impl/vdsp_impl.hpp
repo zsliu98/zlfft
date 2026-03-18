@@ -20,10 +20,12 @@ namespace zlbenchmark {
             if (!fft_setup_) {
                 throw std::runtime_error("vDSP_create_fftsetup failed");
             }
+#ifndef VDSP_STRIDE_2
             temp_split_real_.resize(n_);
             temp_split_imag_.resize(n_);
             split_complex_.realp = temp_split_real_.data();
             split_complex_.imagp = temp_split_imag_.data();
+#endif
         }
 
         ~VDSPFFT() {
@@ -33,11 +35,21 @@ namespace zlbenchmark {
         }
 
         void forward(std::span<C> in_buffer, std::span<C> out_buffer) {
+#ifndef VDSP_STRIDE_2
             vDSP_ctoz(reinterpret_cast<DSPComplex*>(in_buffer.data()), 2, &split_complex_, 1, n_);
-
             vDSP_fft_zip(fft_setup_, &split_complex_, 1, order_, FFT_FORWARD);
-
             vDSP_ztoc(&split_complex_, 1, reinterpret_cast<DSPComplex*>(out_buffer.data()), 2, n_);
+#else
+            DSPSplitComplex inline_split_in;
+            inline_split_in.realp = reinterpret_cast<float*>(in_buffer.data());
+            inline_split_in.imagp = reinterpret_cast<float*>(in_buffer.data()) + 1;
+
+            DSPSplitComplex inline_split_out;
+            inline_split_out.realp = reinterpret_cast<float*>(out_buffer.data());
+            inline_split_out.imagp = reinterpret_cast<float*>(out_buffer.data()) + 1;
+
+            vDSP_fft_zop(fft_setup_, &inline_split_in, 2, &inline_split_out, 2, order_, FFT_FORWARD);
+#endif
         }
 
     private:
@@ -59,10 +71,12 @@ namespace zlbenchmark {
             if (!fft_setup_) {
                 throw std::runtime_error("vDSP_create_fftsetupD failed");
             }
+#ifndef VDSP_STRIDE_2
             temp_split_real_.resize(n_);
             temp_split_imag_.resize(n_);
             split_complex_.realp = temp_split_real_.data();
             split_complex_.imagp = temp_split_imag_.data();
+#endif
         }
 
         ~VDSPFFT() {
@@ -72,9 +86,21 @@ namespace zlbenchmark {
         }
 
         void forward(std::span<C> in_buffer, std::span<C> out_buffer) {
+#ifndef VDSP_STRIDE_2
             vDSP_ctozD(reinterpret_cast<DSPDoubleComplex*>(in_buffer.data()), 2, &split_complex_, 1, n_);
             vDSP_fft_zipD(fft_setup_, &split_complex_, 1, order_, FFT_FORWARD);
             vDSP_ztocD(&split_complex_, 1, reinterpret_cast<DSPDoubleComplex*>(out_buffer.data()), 2, n_);
+#else
+            DSPDoubleSplitComplex inline_split_in;
+            inline_split_in.realp = reinterpret_cast<double*>(in_buffer.data());
+            inline_split_in.imagp = reinterpret_cast<double*>(in_buffer.data()) + 1;
+
+            DSPDoubleSplitComplex inline_split_out;
+            inline_split_out.realp = reinterpret_cast<double*>(out_buffer.data());
+            inline_split_out.imagp = reinterpret_cast<double*>(out_buffer.data()) + 1;
+
+            vDSP_fft_zopD(fft_setup_, &inline_split_in, 2, &inline_split_out, 2, order_, FFT_FORWARD);
+#endif
         }
 
     private:

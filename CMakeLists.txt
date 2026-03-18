@@ -136,6 +136,13 @@ if (ENABLE_VDSP)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_VDSP)
 endif ()
 
+option(ENABLE_VDSP_STRIDE_2 "Enable vDSP stride 2" OFF)
+if (ENABLE_VDSP_STRIDE_2)
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
+    target_link_libraries(zlfft_benchmark PRIVATE ${ACCELERATE_FRAMEWORK})
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_VDSP_STRIDE_2)
+endif ()
+
 option(ENABLE_KFR "Enable kfr" OFF)
 if (ENABLE_KFR)
     set(KFR_USE_BOOST_MATH OFF CACHE BOOL "Disable Boost Math usage in kfr" FORCE)

@@ -84,10 +84,10 @@ using FFTClass = zlfft::SIMDStockhamRadix4SOAKernel4OPT1<F>;
 #include "../source/simd_low_order.hpp"
 using FFTClass = zlfft::SIMDLowOrder<F>;
 #elif defined(ENABLE_SIMD_LOW_ORDER_OPT1)
-#include "../source/simd_low_order_opt1.hpp"
+#include "../zlfft_impl/simd_low_order_opt1.hpp"
 using FFTClass = zlfft::SIMDLowOrderOPT1<F>;
 #elif defined(ENABLE_SIMD_LOW_ORDER_OPT2)
-#include "../source/simd_low_order_opt2.hpp"
+#include "../zlfft_impl/simd_low_order_opt2.hpp"
 using FFTClass = zlfft::SIMDLowOrderOPT2<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;

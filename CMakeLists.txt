@@ -22,7 +22,7 @@ if (THROUGHPUT_TEST)
     target_link_libraries(zlfft_benchmark PRIVATE benchmark::benchmark)
 endif ()
 
-target_include_directories(zlfft_benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/benchmark ${CMAKE_CURRENT_SOURCE_DIR}/source)
+target_include_directories(zlfft_benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/benchmark ${CMAKE_CURRENT_SOURCE_DIR}/source ${CMAKE_CURRENT_SOURCE_DIR}/zlfft_impl)
 
 option(ENABLE_NAIVE_COOLEY_RADIX2 "Enable naive_cooley_radix2" OFF)
 if (ENABLE_NAIVE_COOLEY_RADIX2)
@@ -112,6 +112,11 @@ endif ()
 option(ENABLE_SIMD_LOW_ORDER_OPT2 "Enable simd_low_order_opt2" OFF)
 if (ENABLE_SIMD_LOW_ORDER_OPT2)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_LOW_ORDER_OPT2)
+endif ()
+
+option(ENABLE_SIMD_LOW_ORDER_SOAOS "Enable simd_low_order_soaos" OFF)
+if (ENABLE_SIMD_LOW_ORDER_SOAOS)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_LOW_ORDER_SOAOS)
 endif ()
 
 option(ENABLE_PFFFT "Enable pffft" OFF)

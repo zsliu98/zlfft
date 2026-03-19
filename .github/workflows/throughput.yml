@@ -22,8 +22,8 @@ jobs:
             os: ubuntu-latest
           - name: macOS
             os: macos-latest
-          - name: Windows
-            os: windows-latest
+#          - name: Windows
+#            os: windows-latest
 
     steps:
       - name: Checkout code
@@ -70,12 +70,16 @@ jobs:
         run: |
           python -u benchmark/throughput.py 5 25 ipp
 
+      - name: vDSP Throughput Test
+        if: runner.os == 'macOS'
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 vdsp
+
       - name: KFR Throughput Test
         shell: bash
         run: python -u benchmark/throughput.py 5 25 kfr
 
       - name: FFTW3 Throughput Test
-        if: ${{ runner.os == 'Linux' }}
         shell: bash
         run: python -u benchmark/throughput.py 5 25 fftw3
 
@@ -84,7 +88,7 @@ jobs:
         run: python -u benchmark/throughput.py 5 25 fftw3_estimate
 
       - name: pffft Throughput Test
-        if: ${{ runner.os != 'Windows' }}
+        if: runner.os != 'Windows'
         shell: bash
         run: python -u benchmark/throughput.py 5 25 pffft
 

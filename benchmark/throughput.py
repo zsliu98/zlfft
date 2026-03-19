@@ -4,6 +4,7 @@ import os
 import sys
 import platform
 import json
+import time
 
 from build_config import build_benchmark
 
@@ -60,6 +61,7 @@ def main():
 
     try:
         exe_path = build_benchmark(args.algorithm, "throughput")
+        time.sleep(10)
         run_benchmark(exe_path, args.n0, args.n1, args.algorithm)
     except subprocess.CalledProcessError as e:
         print(f"Error executing benchmark: {e}")

@@ -29,6 +29,9 @@ using FFTClass = zlbenchmark::VDSPFFT<F>;
 #elif defined(ENABLE_VDSP_STRIDE_2)
 #include "../vdsp_impl/vdsp_impl.hpp"
 using FFTClass = zlbenchmark::VDSPFFT<F>;
+#elif defined(ENABLE_IPP)
+#include "../ipp_impl/ipp_impl.hpp"
+using FFTClass = zlbenchmark::IPPFFT<F>;
 #elif defined(ENABLE_KFR)
 #include "../kfr_impl/kfr_impl.hpp"
 using FFTClass = zlbenchmark::KFRFFT<F>;

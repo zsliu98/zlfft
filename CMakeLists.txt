@@ -143,6 +143,54 @@ if (ENABLE_VDSP_STRIDE_2)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_VDSP_STRIDE_2)
 endif ()
 
+option(ENABLE_IPP "Enable Intel IPP" OFF)
+if (ENABLE_IPP)
+    if(WIN32)
+        set(IPP_ROOT "$ENV{USERPROFILE}/.nuget/packages/intelipp.static.win-x64/2022.3.0.387")
+        set(IPP_INC "${IPP_ROOT}/build/native/include/ipp")
+        set(IPP_LIB "${IPP_ROOT}/build/native/win-x64/")
+        set(IPP_LIBS ippsmt ippcoremt ippimt ippcvmt ippvmmt)
+    elseif(UNIX)
+        find_path(IPP_INC
+                NAMES ippcore.h
+                HINTS
+                $ENV{IPPROOT}/include/ipp
+                $ENV{IPPROOT}/include
+                PATHS
+                "/opt/intel/oneapi/include/ipp"
+                "/opt/intel/oneapi/include"
+                "/opt/intel/oneapi/ipp/latest/include"
+        )
+        find_library(IPP_CORE_LIB
+                NAMES ippcore
+                HINTS
+                $ENV{IPPROOT}/lib
+                $ENV{IPPROOT}/lib/intel64
+                PATHS
+                "/opt/intel/oneapi/lib"
+                "/opt/intel/oneapi/ipp/latest/lib/intel64"
+        )
+        if (IPP_INC AND IPP_CORE_LIB)
+            get_filename_component(IPP_LIB "${IPP_CORE_LIB}" DIRECTORY)
+            set(IPP_LIBS ipps ippcore ippi ippcv ippvm)
+            set(IPP_ROOT "${IPP_INC}")
+            message(STATUS "Dynamically located IPP Headers at: ${IPP_INC}")
+            message(STATUS "Dynamically located IPP Libraries at: ${IPP_LIB}")
+        else()
+            message(WARNING "CMake could not locate Intel IPP headers or libraries.")
+        endif()
+    endif()
+    if (IS_DIRECTORY "${IPP_ROOT}")
+        message(STATUS "INTEL IPP FOUND at ${IPP_ROOT}")
+        target_include_directories(zlfft_benchmark PRIVATE "${IPP_INC}")
+        target_link_directories(zlfft_benchmark PRIVATE "${IPP_LIB}")
+        target_link_libraries(zlfft_benchmark PRIVATE ${IPP_LIBS})
+        target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_IPP)
+    else ()
+        message(STATUS "INTEL IPP NOT LOADED: ${IPP_ROOT} was not found")
+    endif ()
+endif ()
+
 option(ENABLE_KFR "Enable kfr" OFF)
 if (ENABLE_KFR)
     set(KFR_USE_BOOST_MATH OFF CACHE BOOL "Disable Boost Math usage in kfr" FORCE)

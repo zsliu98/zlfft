@@ -74,6 +74,11 @@ jobs:
         shell: bash
         run: python -u benchmark/throughput.py 5 25 kfr
 
+      - name: FFTW3 Throughput Test
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: python -u benchmark/throughput.py 5 25 fftw3
+
       - name: FFTW3 Estimate Throughput Test
         shell: bash
         run: python -u benchmark/throughput.py 5 25 fftw3_estimate

@@ -10,6 +10,7 @@
 #include <cassert>
 
 #include <hwy/highway.h>
+#include <hwy/cache_control.h>
 #include <hwy/aligned_allocator.h>
 
 namespace zlfft::common {
@@ -36,6 +37,7 @@ namespace zlfft::common {
 
         for (size_t i = 0; i < quarter_n; i += lanes) {
             const F* __restrict in_shift = in_aosoa + (i << 1);
+
             const auto r0 = hn::LoadU(d, in_shift);
             const auto i0 = hn::LoadU(d, in_shift + lanes);
             const auto r1 = hn::LoadU(d, in_shift + half_n);

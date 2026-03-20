@@ -1,9 +1,6 @@
 #pragma once
 
 #include "zlfft_common.hpp"
-
-#pragma once
-
 #include <vector>
 #include <span>
 #include <complex>
@@ -21,7 +18,7 @@ namespace zlfft::common {
     template <typename F>
     inline void radix4_aosoa(const F* __restrict in_aosoa, F* __restrict out_aosoa,
                              const size_t n, const size_t width,
-                             const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+                             const F* __restrict w_ptr) {
         const auto quarter_n = n >> 2;
         const auto half_n = n >> 1;
         const auto three_quarter_n = quarter_n + half_n;
@@ -49,12 +46,14 @@ namespace zlfft::common {
             const auto i3 = hn::LoadU(d, in_shift + three_over_two_n + lanes);
 
             const size_t k = i & mask;
-            const auto w1_r = hn::LoadU(d, w_r_ptr + k);
-            const auto w1_i = hn::LoadU(d, w_i_ptr + k);
-            const auto w2_r = hn::LoadU(d, w_r_ptr + width + k);
-            const auto w2_i = hn::LoadU(d, w_i_ptr + width + k);
-            const auto w3_r = hn::LoadU(d, w_r_ptr + double_width + k);
-            const auto w3_i = hn::LoadU(d, w_i_ptr + double_width + k);
+            const size_t w_offset = k * 6;
+
+            const auto w1_r = hn::LoadU(d, w_ptr + w_offset);
+            const auto w1_i = hn::LoadU(d, w_ptr + w_offset + lanes);
+            const auto w2_r = hn::LoadU(d, w_ptr + w_offset + lanes * 2);
+            const auto w2_i = hn::LoadU(d, w_ptr + w_offset + lanes * 3);
+            const auto w3_r = hn::LoadU(d, w_ptr + w_offset + lanes * 4);
+            const auto w3_i = hn::LoadU(d, w_ptr + w_offset + lanes * 5);
 
             const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
             const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
@@ -154,7 +153,7 @@ namespace zlfft::common {
     template <typename F>
     inline void radix4_width4_aosoa(const F* __restrict in_aosoa, F* __restrict out_aosoa,
                                     const size_t n,
-                                    const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+                                    const F* __restrict w_ptr) {
         const size_t quarter_n = n >> 2;
         const size_t half_n = n >> 1;
         const size_t three_quarter_n = quarter_n * 3;
@@ -162,12 +161,12 @@ namespace zlfft::common {
         static constexpr hn::FixedTag<F, 4> d;
         static constexpr size_t lanes = hn::Lanes(d);
 
-        const auto w1_r = hn::LoadU(d, w_r_ptr);
-        const auto w1_i = hn::LoadU(d, w_i_ptr);
-        const auto w2_r = hn::LoadU(d, w_r_ptr + 4);
-        const auto w2_i = hn::LoadU(d, w_i_ptr + 4);
-        const auto w3_r = hn::LoadU(d, w_r_ptr + 8);
-        const auto w3_i = hn::LoadU(d, w_i_ptr + 8);
+        const auto w1_r = hn::LoadU(d, w_ptr);
+        const auto w1_i = hn::LoadU(d, w_ptr + 4);
+        const auto w2_r = hn::LoadU(d, w_ptr + 8);
+        const auto w2_i = hn::LoadU(d, w_ptr + 12);
+        const auto w3_r = hn::LoadU(d, w_ptr + 16);
+        const auto w3_i = hn::LoadU(d, w_ptr + 20);
 
         for (size_t j = 0; j < quarter_n; j += lanes) {
             const auto i1 = hn::LoadU(d, in_aosoa + 2 * (j + quarter_n) + lanes);
@@ -218,7 +217,7 @@ namespace zlfft::common {
     inline void radix4_last_pass_fused_aosoa(const F* __restrict in_aosoa,
                                              std::complex<F>* __restrict out,
                                              const size_t n, const size_t width,
-                                             const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+                                             const F* __restrict w_ptr) {
         const size_t quarter_n = n >> 2;
         const size_t half_n = n >> 1;
         const size_t three_quarter_n = quarter_n * 3;
@@ -239,12 +238,14 @@ namespace zlfft::common {
             const auto i3 = hn::LoadU(d, in_aosoa + 2 * (three_quarter_n + i) + lanes);
 
             const size_t k = i & mask;
-            const auto w1_r = hn::LoadU(d, w_r_ptr + k);
-            const auto w1_i = hn::LoadU(d, w_i_ptr + k);
-            const auto w2_r = hn::LoadU(d, w_r_ptr + width + k);
-            const auto w2_i = hn::LoadU(d, w_i_ptr + width + k);
-            const auto w3_r = hn::LoadU(d, w_r_ptr + (width << 1) + k);
-            const auto w3_i = hn::LoadU(d, w_i_ptr + (width << 1) + k);
+            const size_t w_offset = k * 6;
+
+            const auto w1_r = hn::LoadU(d, w_ptr + w_offset);
+            const auto w1_i = hn::LoadU(d, w_ptr + w_offset + lanes);
+            const auto w2_r = hn::LoadU(d, w_ptr + w_offset + lanes * 2);
+            const auto w2_i = hn::LoadU(d, w_ptr + w_offset + lanes * 3);
+            const auto w3_r = hn::LoadU(d, w_ptr + w_offset + lanes * 4);
+            const auto w3_i = hn::LoadU(d, w_ptr + w_offset + lanes * 5);
 
             const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
             const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
@@ -281,7 +282,7 @@ namespace zlfft::common {
     template <typename F>
     inline void radix8_aosoa(const F* __restrict in_aosoa, F* __restrict out_aosoa,
                              const size_t n, const size_t width,
-                             const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+                             const F* __restrict w_ptr) {
         const size_t eighth_n = n >> 3;
         static constexpr hn::ScalableTag<F> d;
         static constexpr size_t lanes = hn::Lanes(d);
@@ -292,14 +293,15 @@ namespace zlfft::common {
 
         for (size_t i = 0; i < eighth_n; i += lanes) {
             const size_t k = i & mask;
+            const size_t w_offset = k * 14;
             const size_t j_times_8 = (i & ~mask) << 3;
             const size_t out_idx = j_times_8 + k;
 
-            auto load_twiddle_mul = [&](size_t in_offset, size_t w_mult, auto& r_out, auto& i_out) {
+            auto load_twiddle_mul = [&](size_t in_offset, size_t m_idx, auto& r_out, auto& i_out) {
                 const auto r_in = hn::LoadU(d, in_aosoa + 2 * (in_offset + i));
                 const auto i_in = hn::LoadU(d, in_aosoa + 2 * (in_offset + i) + lanes);
-                const auto w_r = hn::LoadU(d, w_r_ptr + (w_mult * width) + k);
-                const auto w_i = hn::LoadU(d, w_i_ptr + (w_mult * width) + k);
+                const auto w_r = hn::LoadU(d, w_ptr + w_offset + 2 * m_idx * lanes);
+                const auto w_i = hn::LoadU(d, w_ptr + w_offset + (2 * m_idx + 1) * lanes);
                 r_out = hn::NegMulAdd(i_in, w_i, hn::Mul(r_in, w_r));
                 i_out = hn::MulAdd(i_in, w_r, hn::Mul(r_in, w_i));
             };
@@ -308,25 +310,25 @@ namespace zlfft::common {
             const auto i0 = hn::LoadU(d, in_aosoa + 2 * i + lanes);
 
             hn::Vec<decltype(d)> r4, i4;
-            load_twiddle_mul(eighth_n * 4, 3, r4, i4);
+            load_twiddle_mul(eighth_n * 4, 0, r4, i4); // Maps to generated multiplier 3
             const auto t0_r = hn::Add(r0, r4), t0_i = hn::Add(i0, i4);
             const auto t1_r = hn::Sub(r0, r4), t1_i = hn::Sub(i0, i4);
 
             hn::Vec<decltype(d)> r2, i2, r6, i6;
-            load_twiddle_mul(eighth_n * 2, 1, r2, i2);
-            load_twiddle_mul(eighth_n * 6, 5, r6, i6);
+            load_twiddle_mul(eighth_n * 2, 1, r2, i2); // Maps to generated multiplier 1
+            load_twiddle_mul(eighth_n * 6, 2, r6, i6); // Maps to generated multiplier 5
             const auto t2_r = hn::Add(r2, r6), t2_i = hn::Add(i2, i6);
             const auto t3_r = hn::Sub(r2, r6), t3_i = hn::Sub(i2, i6);
 
             hn::Vec<decltype(d)> r1, i1, r5, i5;
-            load_twiddle_mul(eighth_n * 1, 0, r1, i1);
-            load_twiddle_mul(eighth_n * 5, 4, r5, i5);
+            load_twiddle_mul(eighth_n * 1, 3, r1, i1); // Maps to generated multiplier 0
+            load_twiddle_mul(eighth_n * 5, 4, r5, i5); // Maps to generated multiplier 4
             const auto u0_r = hn::Add(r1, r5), u0_i = hn::Add(i1, i5);
             const auto u1_r = hn::Sub(r1, r5), u1_i = hn::Sub(i1, i5);
 
             hn::Vec<decltype(d)> r3, i3, r7, i7;
-            load_twiddle_mul(eighth_n * 3, 2, r3, i3);
-            load_twiddle_mul(eighth_n * 7, 6, r7, i7);
+            load_twiddle_mul(eighth_n * 3, 5, r3, i3); // Maps to generated multiplier 2
+            load_twiddle_mul(eighth_n * 7, 6, r7, i7); // Maps to generated multiplier 6
             const auto u2_r = hn::Add(r3, r7), u2_i = hn::Add(i3, i7);
             const auto u3_r = hn::Sub(r3, r7), u3_i = hn::Sub(i3, i7);
 

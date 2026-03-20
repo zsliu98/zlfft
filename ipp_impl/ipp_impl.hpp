@@ -12,6 +12,7 @@
 namespace zlbenchmark {
     enum class IPPSimdLevel {
         Auto,
+        SSE2,
         SSE42,
         AVX2,
         AVX512
@@ -33,9 +34,13 @@ namespace zlbenchmark {
                 cpuFeatures &= ~(ippCPUID_AVX512F | ippCPUID_AVX512CD |
                                  ippCPUID_AVX512VL | ippCPUID_AVX512BW | ippCPUID_AVX512DQ);
             }
-
             if (target_level <= IPPSimdLevel::SSE42) {
                 cpuFeatures &= ~(ippCPUID_AVX | ippCPUID_AVX2);
+            }
+            if (target_level <= IPPSimdLevel::SSE2) {
+                cpuFeatures &= ~(ippCPUID_SSE3 | ippCPUID_SSSE3 |
+                                 ippCPUID_SSE41 | ippCPUID_SSE42 |
+                                 ippCPUID_AES | ippCPUID_CLMUL);
             }
 
             IppStatus status = ippSetCpuFeatures(cpuFeatures);
@@ -45,16 +50,16 @@ namespace zlbenchmark {
         });
     }
 
-    template <typename F>
+    template <typename F, IPPSimdLevel kSimd = IPPSimdLevel::Auto>
     class IPPFFT;
 
-    template <>
-    class IPPFFT<float> final {
+    template <IPPSimdLevel kSimd>
+    class IPPFFT<float, kSimd> final {
         using C = std::complex<float>;
 
     public:
         explicit IPPFFT(const int order) : order_(order), n_(1 << order) {
-            init_ipp_dispatcher(IPPSimdLevel::AVX2);
+            init_ipp_dispatcher(kSimd);
             int specSize = 0, initSize = 0, bufSize = 0;
 
             IppStatus status = ippsFFTGetSize_C_32fc(order_, IPP_FFT_DIV_INV_BY_N, ippAlgHintNone, &specSize, &initSize, &bufSize);
@@ -105,13 +110,13 @@ namespace zlbenchmark {
         Ipp8u* work_buf_{nullptr};
     };
 
-    template <>
-    class IPPFFT<double> final {
+    template <IPPSimdLevel kSimd>
+    class IPPFFT<double, kSimd> final {
         using C = std::complex<double>;
 
     public:
         explicit IPPFFT(const int order) : order_(order), n_(1 << order) {
-            init_ipp_dispatcher(IPPSimdLevel::AVX2);
+            init_ipp_dispatcher(kSimd);
             int specSize = 0, initSize = 0, bufSize = 0;
             
             IppStatus status = ippsFFTGetSize_C_64fc(order_, IPP_FFT_DIV_INV_BY_N, ippAlgHintNone, &specSize, &initSize, &bufSize);

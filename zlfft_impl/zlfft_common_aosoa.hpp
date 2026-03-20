@@ -312,25 +312,25 @@ namespace zlfft::common {
             const auto i0 = hn::LoadU(d, in_aosoa + 2 * i + lanes);
 
             hn::Vec<decltype(d)> r4, i4;
-            load_twiddle_mul(eighth_n * 4, 0, r4, i4); // Maps to generated multiplier 3
+            load_twiddle_mul(eighth_n * 4, 0, r4, i4);
             const auto t0_r = hn::Add(r0, r4), t0_i = hn::Add(i0, i4);
             const auto t1_r = hn::Sub(r0, r4), t1_i = hn::Sub(i0, i4);
 
             hn::Vec<decltype(d)> r2, i2, r6, i6;
-            load_twiddle_mul(eighth_n * 2, 1, r2, i2); // Maps to generated multiplier 1
-            load_twiddle_mul(eighth_n * 6, 2, r6, i6); // Maps to generated multiplier 5
+            load_twiddle_mul(eighth_n * 2, 1, r2, i2);
+            load_twiddle_mul(eighth_n * 6, 2, r6, i6);
             const auto t2_r = hn::Add(r2, r6), t2_i = hn::Add(i2, i6);
             const auto t3_r = hn::Sub(r2, r6), t3_i = hn::Sub(i2, i6);
 
             hn::Vec<decltype(d)> r1, i1, r5, i5;
-            load_twiddle_mul(eighth_n * 1, 3, r1, i1); // Maps to generated multiplier 0
-            load_twiddle_mul(eighth_n * 5, 4, r5, i5); // Maps to generated multiplier 4
+            load_twiddle_mul(eighth_n * 1, 3, r1, i1);
+            load_twiddle_mul(eighth_n * 5, 4, r5, i5);
             const auto u0_r = hn::Add(r1, r5), u0_i = hn::Add(i1, i5);
             const auto u1_r = hn::Sub(r1, r5), u1_i = hn::Sub(i1, i5);
 
             hn::Vec<decltype(d)> r3, i3, r7, i7;
-            load_twiddle_mul(eighth_n * 3, 5, r3, i3); // Maps to generated multiplier 2
-            load_twiddle_mul(eighth_n * 7, 6, r7, i7); // Maps to generated multiplier 6
+            load_twiddle_mul(eighth_n * 3, 5, r3, i3);
+            load_twiddle_mul(eighth_n * 7, 6, r7, i7);
             const auto u2_r = hn::Add(r3, r7), u2_i = hn::Add(i3, i7);
             const auto u3_r = hn::Sub(r3, r7), u3_i = hn::Sub(i3, i7);
 

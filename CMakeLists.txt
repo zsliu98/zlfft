@@ -114,9 +114,9 @@ if (ENABLE_SIMD_LOW_ORDER_OPT2)
     target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_LOW_ORDER_OPT2)
 endif ()
 
-option(ENABLE_SIMD_LOW_ORDER_SOAOS "Enable simd_low_order_soaos" OFF)
-if (ENABLE_SIMD_LOW_ORDER_SOAOS)
-    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_LOW_ORDER_SOAOS)
+option(ENABLE_SIMD_LOW_ORDER_AOSOA "Enable simd_low_order_aosoa" OFF)
+if (ENABLE_SIMD_LOW_ORDER_AOSOA)
+    target_compile_definitions(zlfft_benchmark PRIVATE ENABLE_SIMD_LOW_ORDER_AOSOA)
 endif ()
 
 option(ENABLE_PFFFT "Enable pffft" OFF)

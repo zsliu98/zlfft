@@ -1,0 +1,466 @@
+#pragma once
+
+#include "zlfft_common.hpp"
+
+#pragma once
+
+#include <vector>
+#include <span>
+#include <complex>
+#include <cmath>
+#include <algorithm>
+#include <numbers>
+#include <cassert>
+
+#include <hwy/highway.h>
+#include <hwy/aligned_allocator.h>
+
+namespace zlfft::common {
+    namespace hn = hwy::HWY_NAMESPACE;
+
+    template <typename F>
+    inline void radix4_aosoa(const F* __restrict in_aosoa, F* __restrict out_aosoa,
+                             const size_t n, const size_t width,
+                             const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+        const auto quarter_n = n >> 2;
+        const auto half_n = n >> 1;
+        const auto three_quarter_n = quarter_n + half_n;
+
+        const auto double_width = width << 1;
+        const auto triple_width = width * 3;
+
+        static constexpr hn::ScalableTag<F> d;
+        static constexpr size_t lanes = hn::Lanes(d);
+
+        const size_t mask = width - 1;
+
+        for (size_t i = 0; i < quarter_n; i += lanes) {
+            const auto r0 = hn::LoadU(d, in_aosoa + 2 * i);
+            const auto i0 = hn::LoadU(d, in_aosoa + 2 * i + lanes);
+            const auto r1 = hn::LoadU(d, in_aosoa + 2 * (quarter_n + i));
+            const auto i1 = hn::LoadU(d, in_aosoa + 2 * (quarter_n + i) + lanes);
+            const auto r2 = hn::LoadU(d, in_aosoa + 2 * (half_n + i));
+            const auto i2 = hn::LoadU(d, in_aosoa + 2 * (half_n + i) + lanes);
+            const auto r3 = hn::LoadU(d, in_aosoa + 2 * (three_quarter_n + i));
+            const auto i3 = hn::LoadU(d, in_aosoa + 2 * (three_quarter_n + i) + lanes);
+
+            const size_t k = i & mask;
+            const auto w1_r = hn::LoadU(d, w_r_ptr + k);
+            const auto w1_i = hn::LoadU(d, w_i_ptr + k);
+            const auto w2_r = hn::LoadU(d, w_r_ptr + width + k);
+            const auto w2_i = hn::LoadU(d, w_i_ptr + width + k);
+            const auto w3_r = hn::LoadU(d, w_r_ptr + (width << 1) + k);
+            const auto w3_i = hn::LoadU(d, w_i_ptr + (width << 1) + k);
+
+            const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
+            const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
+            const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
+            const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
+
+            const auto s2_r = hn::Add(t1_r, t3_r);
+            const auto s2_i = hn::Add(t1_i, t3_i);
+            const auto s3_r = hn::Sub(t1_r, t3_r);
+            const auto s3_i = hn::Sub(t1_i, t3_i);
+
+            const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
+            const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
+
+            const auto s0_r = hn::Add(r0, t2_r);
+            const auto s0_i = hn::Add(i0, t2_i);
+            const auto s1_r = hn::Sub(r0, t2_r);
+            const auto s1_i = hn::Sub(i0, t2_i);
+
+            const size_t j_times_4 = (i & ~mask) << 2;
+            const size_t out_idx = j_times_4 + k;
+
+            // AoSoA Store
+            hn::StoreU(hn::Add(s0_r, s2_r), d, out_aosoa + 2 * out_idx);
+            hn::StoreU(hn::Add(s0_i, s2_i), d, out_aosoa + 2 * out_idx + lanes);
+
+            hn::StoreU(hn::Add(s1_r, s3_i), d, out_aosoa + 2 * (out_idx + width));
+            hn::StoreU(hn::Sub(s1_i, s3_r), d, out_aosoa + 2 * (out_idx + width) + lanes);
+
+            hn::StoreU(hn::Sub(s0_r, s2_r), d, out_aosoa + 2 * (out_idx + double_width));
+            hn::StoreU(hn::Sub(s0_i, s2_i), d, out_aosoa + 2 * (out_idx + double_width) + lanes);
+
+            hn::StoreU(hn::Sub(s1_r, s3_i), d, out_aosoa + 2 * (out_idx + triple_width));
+            hn::StoreU(hn::Add(s1_i, s3_r), d, out_aosoa + 2 * (out_idx + triple_width) + lanes);
+        }
+    }
+
+    template <typename F>
+    inline void radix4_first_pass_fused_aosoa(const std::complex<F>* __restrict in,
+                                              F* __restrict out_aosoa, const size_t n) {
+        const size_t quarter_n = n >> 2;
+        const size_t half_n = n >> 1;
+        const size_t three_over_two_n = n + half_n;
+
+        static constexpr hn::ScalableTag<F> d;
+        static constexpr size_t lanes = hn::Lanes(d);
+
+        for (size_t j = 0; j < quarter_n; j += lanes) {
+            const F* __restrict in_shift = reinterpret_cast<const F*>(in + j);
+
+            hn::Vec<decltype(d)> x0_r, x0_i, x2_r, x2_i;
+            hn::LoadInterleaved2(d, in_shift, x0_r, x0_i);
+            hn::LoadInterleaved2(d, in_shift + n, x2_r, x2_i);
+
+            const auto t0_r = hn::Add(x0_r, x2_r);
+            const auto t0_i = hn::Add(x0_i, x2_i);
+            const auto t1_r = hn::Sub(x0_r, x2_r);
+            const auto t1_i = hn::Sub(x0_i, x2_i);
+
+            hn::Vec<decltype(d)> x1_r, x1_i, x3_r, x3_i;
+            hn::LoadInterleaved2(d, in_shift + half_n, x1_r, x1_i);
+            hn::LoadInterleaved2(d, in_shift + three_over_two_n, x3_r, x3_i);
+
+            const auto t2_r = hn::Add(x1_r, x3_r);
+            const auto t2_i = hn::Add(x1_i, x3_i);
+            const auto t3_r = hn::Sub(x1_r, x3_r);
+            const auto t3_i = hn::Sub(x1_i, x3_i);
+
+            const auto out0_r = hn::Add(t0_r, t2_r);
+            const auto out0_i = hn::Add(t0_i, t2_i);
+            const auto out2_r = hn::Sub(t0_r, t2_r);
+            const auto out2_i = hn::Sub(t0_i, t2_i);
+
+            const auto t3_neg_i_r = t3_i;
+            const auto t3_neg_i_i = hn::Neg(t3_r);
+
+            const auto out1_r = hn::Add(t1_r, t3_neg_i_r);
+            const auto out1_i = hn::Add(t1_i, t3_neg_i_i);
+            const auto out3_r = hn::Sub(t1_r, t3_neg_i_r);
+            const auto out3_i = hn::Sub(t1_i, t3_neg_i_i);
+
+            alignas(64) F tmp_r[4 * lanes];
+            alignas(64) F tmp_i[4 * lanes];
+            hn::StoreInterleaved4(out0_r, out1_r, out2_r, out3_r, d, tmp_r);
+            hn::StoreInterleaved4(out0_i, out1_i, out2_i, out3_i, d, tmp_i);
+
+            const size_t out_offset = j << 2;
+            for (size_t v = 0; v < 4; ++v) {
+                auto r_v = hn::LoadU(d, tmp_r + v * lanes);
+                auto i_v = hn::LoadU(d, tmp_i + v * lanes);
+                hn::StoreU(r_v, d, out_aosoa + 2 * (out_offset + v * lanes));
+                hn::StoreU(i_v, d, out_aosoa + 2 * (out_offset + v * lanes) + lanes);
+            }
+        }
+    }
+
+    template <typename F>
+    inline void radix4_width4_aosoa(const F* __restrict in_aosoa, F* __restrict out_aosoa,
+                                    const size_t n,
+                                    const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+        const size_t quarter_n = n >> 2;
+        const size_t half_n = n >> 1;
+        const size_t three_quarter_n = quarter_n * 3;
+
+        static constexpr hn::FixedTag<F, 4> d;
+        static constexpr size_t lanes = hn::Lanes(d);
+
+        const auto w1_r = hn::LoadU(d, w_r_ptr);
+        const auto w1_i = hn::LoadU(d, w_i_ptr);
+        const auto w2_r = hn::LoadU(d, w_r_ptr + 4);
+        const auto w2_i = hn::LoadU(d, w_i_ptr + 4);
+        const auto w3_r = hn::LoadU(d, w_r_ptr + 8);
+        const auto w3_i = hn::LoadU(d, w_i_ptr + 8);
+
+        for (size_t j = 0; j < quarter_n; j += lanes) {
+            const auto i1 = hn::LoadU(d, in_aosoa + 2 * (j + quarter_n) + lanes);
+            const auto r1 = hn::LoadU(d, in_aosoa + 2 * (j + quarter_n));
+            const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
+            const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
+
+            const auto i3 = hn::LoadU(d, in_aosoa + 2 * (j + three_quarter_n) + lanes);
+            const auto r3 = hn::LoadU(d, in_aosoa + 2 * (j + three_quarter_n));
+            const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
+            const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
+
+            const auto s2_r = hn::Add(t1_r, t3_r);
+            const auto s2_i = hn::Add(t1_i, t3_i);
+            const auto s3_r = hn::Sub(t1_r, t3_r);
+            const auto s3_i = hn::Sub(t1_i, t3_i);
+
+            const auto i2 = hn::LoadU(d, in_aosoa + 2 * (j + half_n) + lanes);
+            const auto r2 = hn::LoadU(d, in_aosoa + 2 * (j + half_n));
+            const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
+            const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
+
+            const auto i0 = hn::LoadU(d, in_aosoa + 2 * j + lanes);
+            const auto r0 = hn::LoadU(d, in_aosoa + 2 * j);
+
+            const auto s0_r = hn::Add(r0, t2_r);
+            const auto s0_i = hn::Add(i0, t2_i);
+            const auto s1_r = hn::Sub(r0, t2_r);
+            const auto s1_i = hn::Sub(i0, t2_i);
+
+            const size_t out_idx = j << 2;
+
+            hn::StoreU(hn::Add(s0_r, s2_r), d, out_aosoa + 2 * out_idx);
+            hn::StoreU(hn::Add(s0_i, s2_i), d, out_aosoa + 2 * out_idx + lanes);
+
+            hn::StoreU(hn::Sub(s0_r, s2_r), d, out_aosoa + 2 * (out_idx + 8));
+            hn::StoreU(hn::Sub(s0_i, s2_i), d, out_aosoa + 2 * (out_idx + 8) + lanes);
+
+            hn::StoreU(hn::Add(s1_r, s3_i), d, out_aosoa + 2 * (out_idx + 4));
+            hn::StoreU(hn::Sub(s1_i, s3_r), d, out_aosoa + 2 * (out_idx + 4) + lanes);
+
+            hn::StoreU(hn::Sub(s1_r, s3_i), d, out_aosoa + 2 * (out_idx + 12));
+            hn::StoreU(hn::Add(s1_i, s3_r), d, out_aosoa + 2 * (out_idx + 12) + lanes);
+        }
+    }
+
+    template <typename F>
+    inline void radix4_last_pass_fused_aosoa(const F* __restrict in_aosoa,
+                                             std::complex<F>* __restrict out,
+                                             const size_t n, const size_t width,
+                                             const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+        const size_t quarter_n = n >> 2;
+        const size_t half_n = n >> 1;
+        const size_t three_quarter_n = quarter_n * 3;
+
+        static constexpr hn::ScalableTag<F> d;
+        static constexpr size_t lanes = hn::Lanes(d);
+
+        const size_t mask = width - 1;
+
+        for (size_t i = 0; i < quarter_n; i += lanes) {
+            const auto r0 = hn::LoadU(d, in_aosoa + 2 * i);
+            const auto i0 = hn::LoadU(d, in_aosoa + 2 * i + lanes);
+            const auto r1 = hn::LoadU(d, in_aosoa + 2 * (quarter_n + i));
+            const auto i1 = hn::LoadU(d, in_aosoa + 2 * (quarter_n + i) + lanes);
+            const auto r2 = hn::LoadU(d, in_aosoa + 2 * (half_n + i));
+            const auto i2 = hn::LoadU(d, in_aosoa + 2 * (half_n + i) + lanes);
+            const auto r3 = hn::LoadU(d, in_aosoa + 2 * (three_quarter_n + i));
+            const auto i3 = hn::LoadU(d, in_aosoa + 2 * (three_quarter_n + i) + lanes);
+
+            const size_t k = i & mask;
+            const auto w1_r = hn::LoadU(d, w_r_ptr + k);
+            const auto w1_i = hn::LoadU(d, w_i_ptr + k);
+            const auto w2_r = hn::LoadU(d, w_r_ptr + width + k);
+            const auto w2_i = hn::LoadU(d, w_i_ptr + width + k);
+            const auto w3_r = hn::LoadU(d, w_r_ptr + (width << 1) + k);
+            const auto w3_i = hn::LoadU(d, w_i_ptr + (width << 1) + k);
+
+            const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
+            const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
+            const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
+            const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
+
+            const auto s2_r = hn::Add(t1_r, t3_r);
+            const auto s2_i = hn::Add(t1_i, t3_i);
+            const auto s3_r = hn::Sub(t1_r, t3_r);
+            const auto s3_i = hn::Sub(t1_i, t3_i);
+
+            const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
+            const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
+
+            const auto s0_r = hn::Add(r0, t2_r);
+            const auto s0_i = hn::Add(i0, t2_i);
+            const auto s1_r = hn::Sub(r0, t2_r);
+            const auto s1_i = hn::Sub(i0, t2_i);
+
+            const size_t j_times_4 = (i & ~mask) << 2;
+            const size_t out_idx = j_times_4 + k;
+
+            hn::StoreInterleaved2(hn::Add(s0_r, s2_r), hn::Add(s0_i, s2_i), d,
+                                  reinterpret_cast<F*>(out + out_idx));
+            hn::StoreInterleaved2(hn::Add(s1_r, s3_i), hn::Sub(s1_i, s3_r), d,
+                                  reinterpret_cast<F*>(out + out_idx + width));
+            hn::StoreInterleaved2(hn::Sub(s0_r, s2_r), hn::Sub(s0_i, s2_i), d,
+                                  reinterpret_cast<F*>(out + out_idx + (width << 1)));
+            hn::StoreInterleaved2(hn::Sub(s1_r, s3_i), hn::Add(s1_i, s3_r), d,
+                                  reinterpret_cast<F*>(out + out_idx + width * 3));
+        }
+    }
+
+    template <typename F>
+    inline void radix8_aosoa(const F* __restrict in_aosoa, F* __restrict out_aosoa,
+                             const size_t n, const size_t width,
+                             const F* __restrict w_r_ptr, const F* __restrict w_i_ptr) {
+        const size_t eighth_n = n >> 3;
+        static constexpr hn::ScalableTag<F> d;
+        static constexpr size_t lanes = hn::Lanes(d);
+        const size_t mask = width - 1;
+
+        static constexpr F kInvSqrt2 = static_cast<F>(1.0 / std::numbers::sqrt2);
+        const auto inv_sqrt2 = hn::Set(d, kInvSqrt2);
+
+        for (size_t i = 0; i < eighth_n; i += lanes) {
+            const size_t k = i & mask;
+            const size_t j_times_8 = (i & ~mask) << 3;
+            const size_t out_idx = j_times_8 + k;
+
+            auto load_twiddle_mul = [&](size_t in_offset, size_t w_mult, auto& r_out, auto& i_out) {
+                const auto r_in = hn::LoadU(d, in_aosoa + 2 * (in_offset + i));
+                const auto i_in = hn::LoadU(d, in_aosoa + 2 * (in_offset + i) + lanes);
+                const auto w_r = hn::LoadU(d, w_r_ptr + (w_mult * width) + k);
+                const auto w_i = hn::LoadU(d, w_i_ptr + (w_mult * width) + k);
+                r_out = hn::NegMulAdd(i_in, w_i, hn::Mul(r_in, w_r));
+                i_out = hn::MulAdd(i_in, w_r, hn::Mul(r_in, w_i));
+            };
+
+            const auto r0 = hn::LoadU(d, in_aosoa + 2 * i);
+            const auto i0 = hn::LoadU(d, in_aosoa + 2 * i + lanes);
+
+            hn::Vec<decltype(d)> r4, i4;
+            load_twiddle_mul(eighth_n * 4, 3, r4, i4);
+            const auto t0_r = hn::Add(r0, r4), t0_i = hn::Add(i0, i4);
+            const auto t1_r = hn::Sub(r0, r4), t1_i = hn::Sub(i0, i4);
+
+            hn::Vec<decltype(d)> r2, i2, r6, i6;
+            load_twiddle_mul(eighth_n * 2, 1, r2, i2);
+            load_twiddle_mul(eighth_n * 6, 5, r6, i6);
+            const auto t2_r = hn::Add(r2, r6), t2_i = hn::Add(i2, i6);
+            const auto t3_r = hn::Sub(r2, r6), t3_i = hn::Sub(i2, i6);
+
+            hn::Vec<decltype(d)> r1, i1, r5, i5;
+            load_twiddle_mul(eighth_n * 1, 0, r1, i1);
+            load_twiddle_mul(eighth_n * 5, 4, r5, i5);
+            const auto u0_r = hn::Add(r1, r5), u0_i = hn::Add(i1, i5);
+            const auto u1_r = hn::Sub(r1, r5), u1_i = hn::Sub(i1, i5);
+
+            hn::Vec<decltype(d)> r3, i3, r7, i7;
+            load_twiddle_mul(eighth_n * 3, 2, r3, i3);
+            load_twiddle_mul(eighth_n * 7, 6, r7, i7);
+            const auto u2_r = hn::Add(r3, r7), u2_i = hn::Add(i3, i7);
+            const auto u3_r = hn::Sub(r3, r7), u3_i = hn::Sub(i3, i7);
+
+            const auto y00_r = hn::Add(t0_r, t2_r), y00_i = hn::Add(t0_i, t2_i);
+            const auto y02_r = hn::Sub(t0_r, t2_r), y02_i = hn::Sub(t0_i, t2_i);
+            const auto y01_r = hn::Add(t1_r, t3_i), y01_i = hn::Sub(t1_i, t3_r);
+            const auto y03_r = hn::Sub(t1_r, t3_i), y03_i = hn::Add(t1_i, t3_r);
+
+            const auto y10_r = hn::Add(u0_r, u2_r), y10_i = hn::Add(u0_i, u2_i);
+            const auto y12_r = hn::Sub(u0_r, u2_r), y12_i = hn::Sub(u0_i, u2_i);
+            const auto y11_r = hn::Add(u1_r, u3_i), y11_i = hn::Sub(u1_i, u3_r);
+            const auto y13_r = hn::Sub(u1_r, u3_i), y13_i = hn::Add(u1_i, u3_r);
+
+            const auto v0_r = y10_r, v0_i = y10_i;
+            const auto v1_r = hn::Mul(hn::Add(y11_r, y11_i), inv_sqrt2);
+            const auto v1_i = hn::Mul(hn::Sub(y11_i, y11_r), inv_sqrt2);
+            const auto v2_r = y12_i, v2_i = hn::Neg(y12_r);
+            const auto v3_r = hn::Mul(hn::Sub(y13_i, y13_r), inv_sqrt2);
+            const auto v3_i = hn::Mul(hn::Neg(hn::Add(y13_r, y13_i)), inv_sqrt2);
+
+            hn::StoreU(hn::Add(y00_r, v0_r), d, out_aosoa + 2 * out_idx);
+            hn::StoreU(hn::Add(y00_i, v0_i), d, out_aosoa + 2 * out_idx + lanes);
+            hn::StoreU(hn::Sub(y00_r, v0_r), d, out_aosoa + 2 * (out_idx + (width << 2)));
+            hn::StoreU(hn::Sub(y00_i, v0_i), d, out_aosoa + 2 * (out_idx + (width << 2)) + lanes);
+
+            hn::StoreU(hn::Add(y01_r, v1_r), d, out_aosoa + 2 * (out_idx + width));
+            hn::StoreU(hn::Add(y01_i, v1_i), d, out_aosoa + 2 * (out_idx + width) + lanes);
+            hn::StoreU(hn::Sub(y01_r, v1_r), d, out_aosoa + 2 * (out_idx + width * 5));
+            hn::StoreU(hn::Sub(y01_i, v1_i), d, out_aosoa + 2 * (out_idx + width * 5) + lanes);
+
+            hn::StoreU(hn::Add(y02_r, v2_r), d, out_aosoa + 2 * (out_idx + (width << 1)));
+            hn::StoreU(hn::Add(y02_i, v2_i), d, out_aosoa + 2 * (out_idx + (width << 1)) + lanes);
+            hn::StoreU(hn::Sub(y02_r, v2_r), d, out_aosoa + 2 * (out_idx + width * 6));
+            hn::StoreU(hn::Sub(y02_i, v2_i), d, out_aosoa + 2 * (out_idx + width * 6) + lanes);
+
+            hn::StoreU(hn::Add(y03_r, v3_r), d, out_aosoa + 2 * (out_idx + width * 3));
+            hn::StoreU(hn::Add(y03_i, v3_i), d, out_aosoa + 2 * (out_idx + width * 3) + lanes);
+            hn::StoreU(hn::Sub(y03_r, v3_r), d, out_aosoa + 2 * (out_idx + width * 7));
+            hn::StoreU(hn::Sub(y03_i, v3_i), d, out_aosoa + 2 * (out_idx + width * 7) + lanes);
+        }
+    }
+
+    template <typename F>
+    inline void radix8_first_pass_fused_aosoa(const std::complex<F>* __restrict in,
+                                              F* __restrict out_aosoa, const size_t n) {
+        const size_t m = n >> 3;
+        static constexpr hn::ScalableTag<F> d;
+        static constexpr size_t lanes = hn::Lanes(d);
+
+        static constexpr F kInvSqrt2 = static_cast<F>(1.0 / std::numbers::sqrt2);
+        const auto inv_sqrt2 = hn::Set(d, kInvSqrt2);
+
+        for (size_t j = 0; j + lanes <= m; j += lanes) {
+            hn::Vec<decltype(d)> temp_a_r, temp_a_i, temp_b_r, temp_b_i;
+
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j), temp_a_r, temp_a_i);
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + (m << 2)), temp_b_r, temp_b_i);
+            const auto t0_r = hn::Add(temp_a_r, temp_b_r), t0_i = hn::Add(temp_a_i, temp_b_i);
+            const auto t1_r = hn::Sub(temp_a_r, temp_b_r), t1_i = hn::Sub(temp_a_i, temp_b_i);
+
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + (m << 1)), temp_a_r, temp_a_i);
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + m * 6), temp_b_r, temp_b_i);
+            const auto t2_r = hn::Add(temp_a_r, temp_b_r), t2_i = hn::Add(temp_a_i, temp_b_i);
+            const auto t3_r = hn::Sub(temp_a_r, temp_b_r), t3_i = hn::Sub(temp_a_i, temp_b_i);
+
+            const auto y00_r = hn::Add(t0_r, t2_r), y00_i = hn::Add(t0_i, t2_i);
+            const auto y01_r = hn::Add(t1_r, t3_i), y01_i = hn::Sub(t1_i, t3_r);
+            const auto y02_r = hn::Sub(t0_r, t2_r), y02_i = hn::Sub(t0_i, t2_i);
+            const auto y03_r = hn::Sub(t1_r, t3_i), y03_i = hn::Add(t1_i, t3_r);
+
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + m), temp_a_r, temp_a_i);
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + 5 * m), temp_b_r, temp_b_i);
+            const auto u0_r = hn::Add(temp_a_r, temp_b_r), u0_i = hn::Add(temp_a_i, temp_b_i);
+            const auto u1_r = hn::Sub(temp_a_r, temp_b_r), u1_i = hn::Sub(temp_a_i, temp_b_i);
+
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + 3 * m), temp_a_r, temp_a_i);
+            hn::LoadInterleaved2(d, reinterpret_cast<const F*>(in + j + 7 * m), temp_b_r, temp_b_i);
+            const auto u2_r = hn::Add(temp_a_r, temp_b_r), u2_i = hn::Add(temp_a_i, temp_b_i);
+            const auto u3_r = hn::Sub(temp_a_r, temp_b_r), u3_i = hn::Sub(temp_a_i, temp_b_i);
+
+            const auto y10_r = hn::Add(u0_r, u2_r), y10_i = hn::Add(u0_i, u2_i);
+            const auto y11_r = hn::Add(u1_r, u3_i), y11_i = hn::Sub(u1_i, u3_r);
+            const auto y12_r = hn::Sub(u0_r, u2_r), y12_i = hn::Sub(u0_i, u2_i);
+            const auto y13_r = hn::Sub(u1_r, u3_i), y13_i = hn::Add(u1_i, u3_r);
+
+            const auto v0_r = y10_r, v0_i = y10_i;
+            const auto v1_r = hn::Mul(hn::Add(y11_r, y11_i), inv_sqrt2);
+            const auto v1_i = hn::Mul(hn::Sub(y11_i, y11_r), inv_sqrt2);
+            const auto v2_r = y12_i, v2_i = hn::Neg(y12_r);
+            const auto v3_r = hn::Mul(hn::Sub(y13_i, y13_r), inv_sqrt2);
+            const auto v3_i = hn::Mul(hn::Neg(hn::Add(y13_r, y13_i)), inv_sqrt2);
+
+            const auto z00_r = hn::Add(y00_r, v0_r), z00_i = hn::Add(y00_i, v0_i);
+            const auto z01_r = hn::Add(y01_r, v1_r), z01_i = hn::Add(y01_i, v1_i);
+            const auto z02_r = hn::Add(y02_r, v2_r), z02_i = hn::Add(y02_i, v2_i);
+            const auto z03_r = hn::Add(y03_r, v3_r), z03_i = hn::Add(y03_i, v3_i);
+
+            const auto z10_r = hn::Sub(y00_r, v0_r), z10_i = hn::Sub(y00_i, v0_i);
+            const auto z11_r = hn::Sub(y01_r, v1_r), z11_i = hn::Sub(y01_i, v1_i);
+            const auto z12_r = hn::Sub(y02_r, v2_r), z12_i = hn::Sub(y02_i, v2_i);
+            const auto z13_r = hn::Sub(y03_r, v3_r), z13_i = hn::Sub(y03_i, v3_i);
+
+            const auto lower_r0 = hn::InterleaveLower(d, z00_r, z10_r);
+            const auto lower_r1 = hn::InterleaveLower(d, z01_r, z11_r);
+            const auto lower_r2 = hn::InterleaveLower(d, z02_r, z12_r);
+            const auto lower_r3 = hn::InterleaveLower(d, z03_r, z13_r);
+
+            const auto upper_r0 = hn::InterleaveUpper(d, z00_r, z10_r);
+            const auto upper_r1 = hn::InterleaveUpper(d, z01_r, z11_r);
+            const auto upper_r2 = hn::InterleaveUpper(d, z02_r, z12_r);
+            const auto upper_r3 = hn::InterleaveUpper(d, z03_r, z13_r);
+
+            const auto lower_i0 = hn::InterleaveLower(d, z00_i, z10_i);
+            const auto lower_i1 = hn::InterleaveLower(d, z01_i, z11_i);
+            const auto lower_i2 = hn::InterleaveLower(d, z02_i, z12_i);
+            const auto lower_i3 = hn::InterleaveLower(d, z03_i, z13_i);
+
+            const auto upper_i0 = hn::InterleaveUpper(d, z00_i, z10_i);
+            const auto upper_i1 = hn::InterleaveUpper(d, z01_i, z11_i);
+            const auto upper_i2 = hn::InterleaveUpper(d, z02_i, z12_i);
+            const auto upper_i3 = hn::InterleaveUpper(d, z03_i, z13_i);
+
+            alignas(64) F tmp_r[4 * lanes];
+            alignas(64) F tmp_i[4 * lanes];
+
+            hn::StoreInterleaved4(lower_r0, lower_r1, lower_r2, lower_r3, d, tmp_r);
+            hn::StoreInterleaved4(upper_r0, upper_r1, upper_r2, upper_r3, d, tmp_r + (lanes << 2));
+
+            hn::StoreInterleaved4(lower_i0, lower_i1, lower_i2, lower_i3, d, tmp_i);
+            hn::StoreInterleaved4(upper_i0, upper_i1, upper_i2, upper_i3, d, tmp_i + (lanes << 2));
+
+            const size_t out_offset = j << 3;
+            for (size_t v = 0; v < 8; ++v) {
+                auto r_v = hn::LoadU(d, tmp_r + v * lanes);
+                auto i_v = hn::LoadU(d, tmp_i + v * lanes);
+                hn::StoreU(r_v, d, out_aosoa + 2 * (out_offset + v * lanes));
+                hn::StoreU(i_v, d, out_aosoa + 2 * (out_offset + v * lanes) + lanes);
+            }
+        }
+    }
+}

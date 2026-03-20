@@ -95,6 +95,9 @@ using FFTClass = zlfft::SIMDLowOrderOPT1<F>;
 #elif defined(ENABLE_SIMD_LOW_ORDER_OPT2)
 #include "../zlfft_impl/simd_low_order_opt2.hpp"
 using FFTClass = zlfft::SIMDLowOrderOPT2<F>;
+#elif defined(ENABLE_SIMD_LOW_ORDER_AOSOA)
+#include "../zlfft_impl/simd_low_order_aosoa.hpp"
+using FFTClass = zlfft::SIMDLowOrderAOSOA<F>;
 #else
 using FFTClass = zlfft::NaiveStockhamRadix2<F>;
 #endif

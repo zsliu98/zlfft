@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include <numbers>
+#include <cstdint>
 #include <cassert>
 
 #include <hwy/highway.h>
@@ -22,6 +23,32 @@ namespace zlfft::common {
         kRadix8,
         kRadix4LastPass,
     };
+
+    template <class D, class V>
+    inline void transpose4x4(D d, V v0, V v1, V v2, V v3, V& r0, V& r1, V& r2, V& r3) {
+        hn::Repartition<uint64_t, D> d64;
+        auto t0 = hn::InterleaveLower(d, v0, v1);
+        auto t1 = hn::InterleaveLower(d, v2, v3);
+        auto t2 = hn::InterleaveUpper(d, v0, v1);
+        auto t3 = hn::InterleaveUpper(d, v2, v3);
+
+        auto m0 = hn::BitCast(d, hn::InterleaveLower(d64, hn::BitCast(d64, t0), hn::BitCast(d64, t1)));
+        auto m1 = hn::BitCast(d, hn::InterleaveUpper(d64, hn::BitCast(d64, t0), hn::BitCast(d64, t1)));
+        auto m2 = hn::BitCast(d, hn::InterleaveLower(d64, hn::BitCast(d64, t2), hn::BitCast(d64, t3)));
+        auto m3 = hn::BitCast(d, hn::InterleaveUpper(d64, hn::BitCast(d64, t2), hn::BitCast(d64, t3)));
+
+        if constexpr (hn::Lanes(D()) == 8) {
+            r0 = hn::ConcatLowerLower(d, m1, m0);
+            r1 = hn::ConcatLowerLower(d, m3, m2);
+            r2 = hn::ConcatUpperUpper(d, m1, m0);
+            r3 = hn::ConcatUpperUpper(d, m3, m2);
+        } else {
+            r0 = m0;
+            r1 = m1;
+            r2 = m2;
+            r3 = m3;
+        }
+    }
 
     template <typename F>
     inline void radix4(const F* __restrict in_r, const F* __restrict in_i,
@@ -41,14 +68,14 @@ namespace zlfft::common {
         const size_t mask = width - 1;
 
         for (size_t i = 0; i < quarter_n; i += lanes) {
-            const auto r0 = hn::LoadU(d, in_r + i);
-            const auto i0 = hn::LoadU(d, in_i + i);
-            const auto r1 = hn::LoadU(d, in_r + quarter_n + i);
-            const auto i1 = hn::LoadU(d, in_i + quarter_n + i);
-            const auto r2 = hn::LoadU(d, in_r + half_n + i);
-            const auto i2 = hn::LoadU(d, in_i + half_n + i);
-            const auto r3 = hn::LoadU(d, in_r + three_quarter_n + i);
-            const auto i3 = hn::LoadU(d, in_i + three_quarter_n + i);
+            const auto r0 = hn::Load(d, in_r + i);
+            const auto i0 = hn::Load(d, in_i + i);
+            const auto r1 = hn::Load(d, in_r + quarter_n + i);
+            const auto i1 = hn::Load(d, in_i + quarter_n + i);
+            const auto r2 = hn::Load(d, in_r + half_n + i);
+            const auto i2 = hn::Load(d, in_i + half_n + i);
+            const auto r3 = hn::Load(d, in_r + three_quarter_n + i);
+            const auto i3 = hn::Load(d, in_i + three_quarter_n + i);
 
             const size_t k = i & mask;
             const auto w1_r = hn::LoadU(d, w_r_ptr + k);
@@ -82,17 +109,17 @@ namespace zlfft::common {
             F* __restrict out_r_shift = out_r + out_idx;
             F* __restrict out_i_shift = out_i + out_idx;
 
-            hn::StoreU(hn::Add(s0_r, s2_r), d, out_r_shift);
-            hn::StoreU(hn::Add(s0_i, s2_i), d, out_i_shift);
+            hn::Store(hn::Add(s0_r, s2_r), d, out_r_shift);
+            hn::Store(hn::Add(s0_i, s2_i), d, out_i_shift);
 
-            hn::StoreU(hn::Add(s1_r, s3_i), d, out_r_shift + width);
-            hn::StoreU(hn::Sub(s1_i, s3_r), d, out_i_shift + width);
+            hn::Store(hn::Add(s1_r, s3_i), d, out_r_shift + width);
+            hn::Store(hn::Sub(s1_i, s3_r), d, out_i_shift + width);
 
-            hn::StoreU(hn::Sub(s0_r, s2_r), d, out_r_shift + double_width);
-            hn::StoreU(hn::Sub(s0_i, s2_i), d, out_i_shift + double_width);
+            hn::Store(hn::Sub(s0_r, s2_r), d, out_r_shift + double_width);
+            hn::Store(hn::Sub(s0_i, s2_i), d, out_i_shift + double_width);
 
-            hn::StoreU(hn::Sub(s1_r, s3_i), d, out_r_shift + triple_width);
-            hn::StoreU(hn::Add(s1_i, s3_r), d, out_i_shift + triple_width);
+            hn::Store(hn::Sub(s1_r, s3_i), d, out_r_shift + triple_width);
+            hn::Store(hn::Add(s1_i, s3_r), d, out_i_shift + triple_width);
         }
     }
 
@@ -170,13 +197,13 @@ namespace zlfft::common {
             const F* __restrict in_i_shift = in_i + j;
             const F* __restrict in_r_shift = in_r + j;
 
-            const auto i1 = hn::LoadU(d, in_i_shift + quarter_n);
-            const auto r1 = hn::LoadU(d, in_r_shift + quarter_n);
+            const auto i1 = hn::Load(d, in_i_shift + quarter_n);
+            const auto r1 = hn::Load(d, in_r_shift + quarter_n);
             const auto t1_r = hn::NegMulAdd(i1, w1_i, hn::Mul(r1, w1_r));
             const auto t1_i = hn::MulAdd(i1, w1_r, hn::Mul(r1, w1_i));
 
-            const auto i3 = hn::LoadU(d, in_i_shift + three_quarter_n);
-            const auto r3 = hn::LoadU(d, in_r_shift + three_quarter_n);
+            const auto i3 = hn::Load(d, in_i_shift + three_quarter_n);
+            const auto r3 = hn::Load(d, in_r_shift + three_quarter_n);
             const auto t3_r = hn::NegMulAdd(i3, w3_i, hn::Mul(r3, w3_r));
             const auto t3_i = hn::MulAdd(i3, w3_r, hn::Mul(r3, w3_i));
 
@@ -185,13 +212,13 @@ namespace zlfft::common {
             const auto s3_r = hn::Sub(t1_r, t3_r);
             const auto s3_i = hn::Sub(t1_i, t3_i);
 
-            const auto i2 = hn::LoadU(d, in_i_shift + half_n);
-            const auto r2 = hn::LoadU(d, in_r_shift + half_n);
+            const auto i2 = hn::Load(d, in_i_shift + half_n);
+            const auto r2 = hn::Load(d, in_r_shift + half_n);
             const auto t2_r = hn::NegMulAdd(i2, w2_i, hn::Mul(r2, w2_r));
             const auto t2_i = hn::MulAdd(i2, w2_r, hn::Mul(r2, w2_i));
 
-            const auto i0 = hn::LoadU(d, in_i_shift);
-            const auto r0 = hn::LoadU(d, in_r_shift);
+            const auto i0 = hn::Load(d, in_i_shift);
+            const auto r0 = hn::Load(d, in_r_shift);
 
             const auto s0_r = hn::Add(r0, t2_r);
             const auto s0_i = hn::Add(i0, t2_i);
@@ -200,15 +227,15 @@ namespace zlfft::common {
 
             F* __restrict out_r_shift = out_r + (j << 2);
             F* __restrict out_i_shift = out_i + (j << 2);
-            hn::StoreU(hn::Add(s0_r, s2_r), d, out_r_shift);
-            hn::StoreU(hn::Add(s0_i, s2_i), d, out_i_shift);
-            hn::StoreU(hn::Sub(s0_r, s2_r), d, out_r_shift + 8);
-            hn::StoreU(hn::Sub(s0_i, s2_i), d, out_i_shift + 8);
+            hn::Store(hn::Add(s0_r, s2_r), d, out_r_shift);
+            hn::Store(hn::Add(s0_i, s2_i), d, out_i_shift);
+            hn::Store(hn::Sub(s0_r, s2_r), d, out_r_shift + 8);
+            hn::Store(hn::Sub(s0_i, s2_i), d, out_i_shift + 8);
 
-            hn::StoreU(hn::Add(s1_r, s3_i), d, out_r_shift + 4);
-            hn::StoreU(hn::Sub(s1_i, s3_r), d, out_i_shift + 4);
-            hn::StoreU(hn::Sub(s1_r, s3_i), d, out_r_shift + 12);
-            hn::StoreU(hn::Add(s1_i, s3_r), d, out_i_shift + 12);
+            hn::Store(hn::Add(s1_r, s3_i), d, out_r_shift + 4);
+            hn::Store(hn::Sub(s1_i, s3_r), d, out_i_shift + 4);
+            hn::Store(hn::Sub(s1_r, s3_i), d, out_r_shift + 12);
+            hn::Store(hn::Add(s1_i, s3_r), d, out_i_shift + 12);
         }
     }
 
@@ -227,14 +254,14 @@ namespace zlfft::common {
         const size_t mask = width - 1;
 
         for (size_t i = 0; i < quarter_n; i += lanes) {
-            const auto r0 = hn::LoadU(d, in_r + i);
-            const auto i0 = hn::LoadU(d, in_i + i);
-            const auto r1 = hn::LoadU(d, in_r + quarter_n + i);
-            const auto i1 = hn::LoadU(d, in_i + quarter_n + i);
-            const auto r2 = hn::LoadU(d, in_r + half_n + i);
-            const auto i2 = hn::LoadU(d, in_i + half_n + i);
-            const auto r3 = hn::LoadU(d, in_r + three_quarter_n + i);
-            const auto i3 = hn::LoadU(d, in_i + three_quarter_n + i);
+            const auto r0 = hn::Load(d, in_r + i);
+            const auto i0 = hn::Load(d, in_i + i);
+            const auto r1 = hn::Load(d, in_r + quarter_n + i);
+            const auto i1 = hn::Load(d, in_i + quarter_n + i);
+            const auto r2 = hn::Load(d, in_r + half_n + i);
+            const auto i2 = hn::Load(d, in_i + half_n + i);
+            const auto r3 = hn::Load(d, in_r + three_quarter_n + i);
+            const auto i3 = hn::Load(d, in_i + three_quarter_n + i);
 
             const size_t k = i & mask;
             const auto w1_r = hn::LoadU(d, w_r_ptr + k);
@@ -295,16 +322,16 @@ namespace zlfft::common {
             const size_t out_idx = j_times_8 + k;
 
             auto load_twiddle_mul = [&](size_t in_offset, size_t w_mult, auto& r_out, auto& i_out) {
-                const auto r_in = hn::LoadU(d, in_r + in_offset + i);
-                const auto i_in = hn::LoadU(d, in_i + in_offset + i);
+                const auto r_in = hn::Load(d, in_r + in_offset + i);
+                const auto i_in = hn::Load(d, in_i + in_offset + i);
                 const auto w_r = hn::LoadU(d, w_r_ptr + (w_mult * width) + k);
                 const auto w_i = hn::LoadU(d, w_i_ptr + (w_mult * width) + k);
                 r_out = hn::NegMulAdd(i_in, w_i, hn::Mul(r_in, w_r));
                 i_out = hn::MulAdd(i_in, w_r, hn::Mul(r_in, w_i));
             };
 
-            const auto r0 = hn::LoadU(d, in_r + i);
-            const auto i0 = hn::LoadU(d, in_i + i);
+            const auto r0 = hn::Load(d, in_r + i);
+            const auto i0 = hn::Load(d, in_i + i);
 
             hn::Vec<decltype(d)> r4, i4;
             load_twiddle_mul(eighth_n * 4, 3, r4, i4);
@@ -346,25 +373,25 @@ namespace zlfft::common {
             const auto v3_r = hn::Mul(hn::Sub(y13_i, y13_r), inv_sqrt2);
             const auto v3_i = hn::Mul(hn::Neg(hn::Add(y13_r, y13_i)), inv_sqrt2);
 
-            hn::StoreU(hn::Add(y00_r, v0_r), d, out_r + out_idx);
-            hn::StoreU(hn::Add(y00_i, v0_i), d, out_i + out_idx);
-            hn::StoreU(hn::Sub(y00_r, v0_r), d, out_r + out_idx + (width << 2));
-            hn::StoreU(hn::Sub(y00_i, v0_i), d, out_i + out_idx + (width << 2));
+            hn::Store(hn::Add(y00_r, v0_r), d, out_r + out_idx);
+            hn::Store(hn::Add(y00_i, v0_i), d, out_i + out_idx);
+            hn::Store(hn::Sub(y00_r, v0_r), d, out_r + out_idx + (width << 2));
+            hn::Store(hn::Sub(y00_i, v0_i), d, out_i + out_idx + (width << 2));
 
-            hn::StoreU(hn::Add(y01_r, v1_r), d, out_r + out_idx + width);
-            hn::StoreU(hn::Add(y01_i, v1_i), d, out_i + out_idx + width);
-            hn::StoreU(hn::Sub(y01_r, v1_r), d, out_r + out_idx + width * 5);
-            hn::StoreU(hn::Sub(y01_i, v1_i), d, out_i + out_idx + width * 5);
+            hn::Store(hn::Add(y01_r, v1_r), d, out_r + out_idx + width);
+            hn::Store(hn::Add(y01_i, v1_i), d, out_i + out_idx + width);
+            hn::Store(hn::Sub(y01_r, v1_r), d, out_r + out_idx + width * 5);
+            hn::Store(hn::Sub(y01_i, v1_i), d, out_i + out_idx + width * 5);
 
-            hn::StoreU(hn::Add(y02_r, v2_r), d, out_r + out_idx + (width << 1));
-            hn::StoreU(hn::Add(y02_i, v2_i), d, out_i + out_idx + (width << 1));
-            hn::StoreU(hn::Sub(y02_r, v2_r), d, out_r + out_idx + width * 6);
-            hn::StoreU(hn::Sub(y02_i, v2_i), d, out_i + out_idx + width * 6);
+            hn::Store(hn::Add(y02_r, v2_r), d, out_r + out_idx + (width << 1));
+            hn::Store(hn::Add(y02_i, v2_i), d, out_i + out_idx + (width << 1));
+            hn::Store(hn::Sub(y02_r, v2_r), d, out_r + out_idx + width * 6);
+            hn::Store(hn::Sub(y02_i, v2_i), d, out_i + out_idx + width * 6);
 
-            hn::StoreU(hn::Add(y03_r, v3_r), d, out_r + out_idx + width * 3);
-            hn::StoreU(hn::Add(y03_i, v3_i), d, out_i + out_idx + width * 3);
-            hn::StoreU(hn::Sub(y03_r, v3_r), d, out_r + out_idx + width * 7);
-            hn::StoreU(hn::Sub(y03_i, v3_i), d, out_i + out_idx + width * 7);
+            hn::Store(hn::Add(y03_r, v3_r), d, out_r + out_idx + width * 3);
+            hn::Store(hn::Add(y03_i, v3_i), d, out_i + out_idx + width * 3);
+            hn::Store(hn::Sub(y03_r, v3_r), d, out_r + out_idx + width * 7);
+            hn::Store(hn::Sub(y03_i, v3_i), d, out_i + out_idx + width * 7);
         }
     }
 

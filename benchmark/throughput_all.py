@@ -88,9 +88,8 @@ def main():
     print("\n" + "="*50)
     print("FINAL BENCHMARK RESULTS")
     print("="*50)
-    for algo, throughputs in results.items():
-        formatted_list = [f"{val:.2f}" for val in throughputs]
-        print(f"{algo:<25}: [{', '.join(formatted_list)}]")
+    print(algo)
+    print(str(results).replace("],", "],\n"))
 
 
 if __name__ == "__main__":

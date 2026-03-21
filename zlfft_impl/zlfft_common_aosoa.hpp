@@ -460,8 +460,8 @@ namespace zlfft::common {
             const auto upper_i2 = hn::InterleaveUpper(d, z02_i, z12_i);
             const auto upper_i3 = hn::InterleaveUpper(d, z03_i, z13_i);
 
-            alignas(64) F tmp_r[4 * lanes];
-            alignas(64) F tmp_i[4 * lanes];
+            alignas(64) F tmp_r[8 * lanes];
+            alignas(64) F tmp_i[8 * lanes];
 
             hn::StoreInterleaved4(lower_r0, lower_r1, lower_r2, lower_r3, d, tmp_r);
             hn::StoreInterleaved4(upper_r0, upper_r1, upper_r2, upper_r3, d, tmp_r + (lanes << 2));

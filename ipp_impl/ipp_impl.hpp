@@ -18,17 +18,22 @@ namespace zlbenchmark {
         AVX512
     };
 
-    inline void init_ipp_dispatcher(IPPSimdLevel target_level = IPPSimdLevel::Auto) {
-        static std::once_flag flag;
-        std::call_once(flag, [target_level]() {
-            if (target_level == IPPSimdLevel::Auto) {
-                ippInit();
-                return;
-            }
+    inline std::mutex& get_ipp_mutex() {
+        static std::mutex mtx;
+        return mtx;
+    }
 
-            Ipp64u cpuFeatures;
+    class ScopedIPPDispatcher {
+    public:
+        explicit ScopedIPPDispatcher(IPPSimdLevel target_level) {
+            std::lock_guard<std::mutex> lock(get_ipp_mutex());
 
-            ippGetCpuFeatures(&cpuFeatures, 0);
+            ippInit();
+            ippGetCpuFeatures(&original_features_, nullptr);
+
+            if (target_level == IPPSimdLevel::Auto) return;
+
+            Ipp64u cpuFeatures = original_features_;
 
             if (target_level <= IPPSimdLevel::AVX2) {
                 cpuFeatures &= ~(ippCPUID_AVX512F | ippCPUID_AVX512CD |
@@ -43,12 +48,19 @@ namespace zlbenchmark {
                                  ippCPUID_AES | ippCPUID_CLMUL);
             }
 
-            IppStatus status = ippSetCpuFeatures(cpuFeatures);
-            if (status != ippStsNoErr) {
+            if (ippSetCpuFeatures(cpuFeatures) != ippStsNoErr) {
                 throw std::runtime_error("Failed to explicitly set IPP CPU features.");
             }
-        });
-    }
+        }
+
+        ~ScopedIPPDispatcher() {
+            std::lock_guard<std::mutex> lock(get_ipp_mutex());
+            ippSetCpuFeatures(original_features_);
+        }
+
+    private:
+        Ipp64u original_features_{0};
+    };
 
     template <typename F, IPPSimdLevel kSimd = IPPSimdLevel::Auto>
     class IPPFFT;
@@ -59,7 +71,6 @@ namespace zlbenchmark {
 
     public:
         explicit IPPFFT(const int order) : order_(order), n_(1 << order) {
-            init_ipp_dispatcher(kSimd);
             int specSize = 0, initSize = 0, bufSize = 0;
 
             IppStatus status = ippsFFTGetSize_C_32fc(order_, IPP_FFT_DIV_INV_BY_N, ippAlgHintNone, &specSize, &initSize, &bufSize);
@@ -103,6 +114,8 @@ namespace zlbenchmark {
         }
 
     private:
+        IPPStateGuard state_guard_{kSimd};
+
         int order_;
         int n_;
         IppsFFTSpec_C_32fc* spec_{nullptr};
@@ -116,9 +129,8 @@ namespace zlbenchmark {
 
     public:
         explicit IPPFFT(const int order) : order_(order), n_(1 << order) {
-            init_ipp_dispatcher(kSimd);
             int specSize = 0, initSize = 0, bufSize = 0;
-            
+
             IppStatus status = ippsFFTGetSize_C_64fc(order_, IPP_FFT_DIV_INV_BY_N, ippAlgHintNone, &specSize, &initSize, &bufSize);
             if (status != ippStsNoErr) {
                 throw std::runtime_error("ippsFFTGetSize_C_64fc failed");
@@ -129,7 +141,7 @@ namespace zlbenchmark {
             Ipp8u* init_buf = initSize > 0 ? ippsMalloc_8u(initSize) : nullptr;
 
             status = ippsFFTInit_C_64fc(&spec_, order_, IPP_FFT_DIV_INV_BY_N, ippAlgHintNone, spec_mem_, init_buf);
-            
+
             if (init_buf) {
                 ippsFree(init_buf);
             }
@@ -160,6 +172,8 @@ namespace zlbenchmark {
         }
 
     private:
+        IPPStateGuard state_guard_{kSimd};
+
         int order_;
         int n_;
         IppsFFTSpec_C_64fc* spec_{nullptr};

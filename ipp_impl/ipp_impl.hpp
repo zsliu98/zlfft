@@ -114,7 +114,7 @@ namespace zlbenchmark {
         }
 
     private:
-        IPPStateGuard state_guard_{kSimd};
+        ScopedIPPDispatcher state_guard_{kSimd};
 
         int order_;
         int n_;
@@ -172,7 +172,7 @@ namespace zlbenchmark {
         }
 
     private:
-        IPPStateGuard state_guard_{kSimd};
+        ScopedIPPDispatcher state_guard_{kSimd};
 
         int order_;
         int n_;

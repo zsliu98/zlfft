@@ -29,7 +29,7 @@ algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4"
          "fftw3", "fftw3_estimate", "kfr", "vdsp", "vdsp_stride_2", "pffft", "ipp"]
 
 
-def build_benchmark(algorithm, benchmark_type):
+def build_benchmark(algorithm, benchmark_type, use_avx2=False):
     build_dir = "build_accuracy"
     os.makedirs(build_dir, exist_ok=True)
 
@@ -38,6 +38,11 @@ def build_benchmark(algorithm, benchmark_type):
         cmake_cmd += ["-DACCURACY_TEST=ON", "-DTHROUGHPUT_TEST=OFF"]
     elif benchmark_type == "throughput":
         cmake_cmd += ["-DACCURACY_TEST=OFF", "-DTHROUGHPUT_TEST=ON"]
+
+    if use_avx2:
+        cmake_cmd += ["-DUSE_AVX2=ON"]
+    else:
+        cmake_cmd += ["-DUSE_AVX2=OFF"]
 
     if platform.system() == "Windows":
         cmake_cmd += ["-DCMAKE_C_COMPILER=clang-cl", "-DCMAKE_CXX_COMPILER=clang-cl"]

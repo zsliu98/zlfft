@@ -46,6 +46,7 @@ def main():
     parser = argparse.ArgumentParser(description="Batch Throughput Benchmark for FFT Algorithms")
     parser.add_argument("n0", type=int, help="Start FFT order (size 2^n)")
     parser.add_argument("n1", type=int, help="End FFT order (size 2^n)")
+    parser.add_argument("--avx2", action="store_true", help="Enable AVX2 architecture")
 
     args = parser.parse_args()
 
@@ -72,7 +73,7 @@ def main():
         print(f"\n[{i+1}/{len(algorithms)}] Building {algo}...")
         
         try:
-            exe_path = build_benchmark(algo, "throughput")
+            exe_path = build_benchmark(algo, "throughput", use_avx2=args.avx2)
             time.sleep(10)
             throughput_data = run_benchmark(exe_path, args.n0, args.n1, algo)
             

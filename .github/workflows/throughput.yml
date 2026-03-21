@@ -64,6 +64,13 @@ jobs:
           source /opt/intel/oneapi/setvars.sh
           python -u benchmark/throughput_all.py 5 25
 
+      - name: Throughput Test AVX2 (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          python -u benchmark/throughput_all.py 5 25 --avx2
+
       - name: Throughput Test (Windows)
         if: runner.os == 'Windows'
         shell: bash

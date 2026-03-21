@@ -56,11 +56,12 @@ def main():
     parser.add_argument("n0", type=int, help="Start FFT order (size 2^n)")
     parser.add_argument("n1", type=int, help="End FFT order (size 2^n)")
     parser.add_argument("algorithm", type=str, help="Algorithm to test (e.g., naive_stockham_radix2, kfr)")
+    parser.add_argument("--avx2", action="store_true", help="Enable AVX2 architecture")
 
     args = parser.parse_args()
 
     try:
-        exe_path = build_benchmark(args.algorithm, "throughput")
+        exe_path = build_benchmark(args.algorithm, "throughput", use_avx2=args.avx2)
         time.sleep(10)
         run_benchmark(exe_path, args.n0, args.n1, args.algorithm)
     except subprocess.CalledProcessError as e:

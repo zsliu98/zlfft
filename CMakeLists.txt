@@ -257,6 +257,8 @@ endif ()
 set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "Disable Highway examples" FORCE)
 set(HWY_ENABLE_TESTS OFF CACHE BOOL "Disable Highway tests" FORCE)
 set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "Disable Highway contrib" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Force static libraries" FORCE)
+set(HWY_ENABLE_SHARED OFF CACHE BOOL "Disable Highway shared library" FORCE)
 
 add_subdirectory(google/highway)
 target_link_libraries(zlfft_benchmark PRIVATE hwy)

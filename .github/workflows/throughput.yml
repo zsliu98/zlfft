@@ -57,53 +57,19 @@ jobs:
         run: |
           nuget install intelipp.static.win-x64 -Version 2022.3.0.387
 
-      - name: IPP Throughput Test (Linux)
+      - name: Throughput Test (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           source /opt/intel/oneapi/setvars.sh
-          python -u benchmark/throughput.py 5 25 ipp
+          python -u benchmark/throughput_all.py 5 25
 
-      - name: IPP Throughput Test (Windows)
+      - name: Throughput Test (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: |
-          python -u benchmark/throughput.py 5 25 ipp
+        run: python -u benchmark/throughput_all.py 5 25
 
-      - name: vDSP Throughput Test
+      - name: Throughput Test (macOS)
         if: runner.os == 'macOS'
         shell: bash
-        run: python -u benchmark/throughput.py 5 25 vdsp
-#
-      - name: KFR Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 kfr
-
-      - name: FFTW3 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 fftw3
-
-      - name: FFTW3 Estimate Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 fftw3_estimate
-
-      - name: pffft Throughput Test
-        if: runner.os != 'Windows'
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 pffft
-
-      - name: simd_low_order_opt1 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 simd_low_order_opt1
-
-      - name: simd_low_order_opt2 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 simd_low_order_opt2
-
-      - name: simd_low_order_aosoa1 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 simd_low_order_aosoa1
-
-      - name: simd_low_order_aosoa2 Throughput Test
-        shell: bash
-        run: python -u benchmark/throughput.py 5 25 simd_low_order_aosoa2
+        run: python -u benchmark/throughput_all.py 5 25

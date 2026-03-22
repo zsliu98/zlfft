@@ -29,8 +29,8 @@ algos = ["naive_stockham_radix2", "naive_cooley_radix2", "naive_stockham_radix4"
          "fftw3", "fftw3_estimate", "kfr", "vdsp", "vdsp_stride_2", "pffft", "ipp"]
 
 
-def build_benchmark(algorithm, benchmark_type, use_avx2=False):
-    build_dir = "build_accuracy"
+def build_benchmark(algorithm, benchmark_type, use_avx2=False, to_print=False):
+    build_dir = "build_fft"
     os.makedirs(build_dir, exist_ok=True)
 
     cmake_cmd = ["cmake", "..", "-DCMAKE_BUILD_TYPE=Release", "-G", "Ninja"]
@@ -66,19 +66,22 @@ def build_benchmark(algorithm, benchmark_type, use_avx2=False):
         build_cmd_str = " ".join(build_cmd)
         full_build_cmd = f'call {vcvars} && {build_cmd_str}'
 
-        print(f"Configuring: {full_cmake_cmd}")
+        if to_print:
+            print(f"Configuring: {full_cmake_cmd}")
         subprocess.run(full_cmake_cmd, capture_output=True, cwd=build_dir, check=True, shell=True)
-
-        print(f"Building: {full_build_cmd}")
+        if to_print:
+            print(f"Building: {full_build_cmd}")
         subprocess.run(full_build_cmd, capture_output=True, cwd=build_dir, check=True, shell=True)
         
         return os.path.join(build_dir, "zlfft_benchmark.exe")
 
     else:
-        print(f"Configuring: {cmake_cmd}")
+        if to_print:
+            print(f"Configuring: {cmake_cmd}")
         subprocess.run(cmake_cmd, capture_output=True, cwd=build_dir, check=True)
 
-        print(f"Building: {build_cmd}")
+        if to_print:
+            print(f"Building: {build_cmd}")
         subprocess.run(build_cmd, capture_output=True, cwd=build_dir, check=True)
 
         return os.path.join(build_dir, "zlfft_benchmark")

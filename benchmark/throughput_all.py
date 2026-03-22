@@ -3,6 +3,7 @@ import subprocess
 import os
 import sys
 import platform
+import shutil
 import json
 import time
 
@@ -85,12 +86,27 @@ def main():
         except Exception as e:
             print(f"Error building or running benchmark for {algo}: {e}")
             continue
-
+    shutil.rmtree("build_fft")
     print("\n" + "="*50)
     print("FINAL BENCHMARK RESULTS")
     print("="*50)
-    print(algo)
-    print(str(results).replace("],", "],\n"))
+    r = {}
+    for key, value in results.items():
+        if key == "fftw":
+            r["fftw3 measure"] = value
+        elif key == "fftw3_estimate":
+            r["fftw3 estimate"] = value
+        elif key == "simd_low_order_opt1":
+            r["radix-4"] = value
+        elif key == "simd_low_order_opt2":
+            r["radix-8"] = value
+        elif key == "simd_low_order_aosoa1":
+            r["radix-4 AoSoA"] = value
+        elif key == "simd_low_order_aosoa2":
+            r["radix-8 AoSoA"] = value
+        else:
+            r[key] = value
+    print(str(r).replace("],", "],\n"))
 
 
 if __name__ == "__main__":
